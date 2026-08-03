@@ -45,6 +45,7 @@ const expectedCategoryCounts = {
 const requiredFiles = [
   'docs/index.html',
   'docs/.nojekyll',
+  'docs/favicon.svg',
   'docs/assets/css/styles.css',
   'docs/assets/js/config.js',
   'docs/assets/js/main.js',
@@ -263,6 +264,19 @@ function validateExternalReference(reference) {
     return /^tel:[+()\d.\s-]+$/i.test(reference);
   }
   return false;
+}
+
+function isValidHttpsUrl(value) {
+  if (typeof value !== 'string' || !/^https:\/\//i.test(value.trim())) {
+    return false;
+  }
+
+  try {
+    const parsed = new URL(value.trim());
+    return parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
 }
 
 function checkHtmlReferences(html) {
@@ -558,6 +572,9 @@ function validateConfig(config) {
       addError('config.release.resources must be an object');
     } else {
       for (const resource of ['paper', 'arxiv', 'code', 'dataset', 'supplementary']) {
+        if (release.resources[resource] !== null && !isValidHttpsUrl(release.resources[resource])) {
+          addError(`config.release.resources.${resource} must be an HTTPS URL when present`);
+        }
         requireExact(release.resources[resource], null, `config.release.resources.${resource}`);
       }
     }
@@ -931,6 +948,14 @@ function findOpeningTagWithAttribute(html, attributeName) {
 }
 
 function validateHtmlStructure(html) {
+  const links = openingTags(html, 'link');
+  const iconLinks = links.filter((tag) => (getAttribute(tag, 'rel') || '').toLowerCase() === 'icon');
+  requireExact(iconLinks.length, 1, 'HTML favicon link count');
+  if (iconLinks.length === 1) {
+    requireExact(getAttribute(iconLinks[0], 'href'), './favicon.svg', 'HTML favicon href');
+    requireExact(getAttribute(iconLinks[0], 'type'), 'image/svg+xml', 'HTML favicon type');
+  }
+
   const anchors = openingTags(html, 'a');
   const hasSkipLink = anchors.some((tag) => {
     const classes = (getAttribute(tag, 'class') || '').split(/\s+/);
@@ -1050,6 +1075,9 @@ function validateMainScript(mainSource) {
     ['BibTeX release hook', /\brelease\.bibtex\b/],
     ['citation copy hook', /\bdataset\.copyCitation\b/],
     ['clipboard copy support', /navigator\?*\.clipboard\?*\.writeText|navigator\.clipboard\.writeText/],
+    ['HTTPS-only resource URL helper', /\bfunction\s+safeHttpsUrl\s*\(/],
+    ['HTTPS-only prefix check', /\^https:\\\/\\\//],
+    ['parsed HTTPS protocol check', /\bparsed\.protocol\s*===\s*['"]https:['"]/],
   ];
 
   if (/playbackRate/i.test(mainSource)) {
@@ -1063,6 +1091,12 @@ function validateMainScript(mainSource) {
   }
   if (/(?:^|[^.$\w])eval\s*\(/m.test(mainSource)) {
     addError('main.js must not use eval');
+  }
+  if (/\^https\?:\\\/\\\//.test(mainSource)) {
+    addError('main.js must not allow http:// release resource prefixes');
+  }
+  if (/\bparsed\.protocol\s*===\s*['"]http:['"]/.test(mainSource)) {
+    addError('main.js must not accept parsed http: release resource URLs');
   }
 
   for (const [label, pattern] of requiredPatterns) {

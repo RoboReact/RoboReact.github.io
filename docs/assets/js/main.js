@@ -24,16 +24,16 @@
     return Array.isArray(value) ? value.map(textValue).filter(Boolean) : [];
   }
 
-  function safeHttpUrl(value) {
+  function safeHttpsUrl(value) {
     const candidate = textValue(value);
 
-    if (!/^https?:\/\//i.test(candidate)) {
+    if (!/^https:\/\//i.test(candidate)) {
       return null;
     }
 
     try {
       const parsed = new URL(candidate);
-      return parsed.protocol === 'http:' || parsed.protocol === 'https:' ? parsed.href : null;
+      return parsed.protocol === 'https:' ? parsed.href : null;
     } catch (error) {
       return null;
     }
@@ -75,7 +75,7 @@
         release.resources && typeof release.resources === 'object' ? release.resources : {};
 
       for (const [key, label] of RESOURCE_LABELS) {
-        const href = safeHttpUrl(resources[key]);
+        const href = safeHttpsUrl(resources[key]);
 
         if (!href) {
           continue;

@@ -232,6 +232,62 @@ test('release metadata remains hidden until public artifacts are ready', () => {
   );
 });
 
+test('site publishes a local SVG favicon from the document head', () => {
+  const { html } = readRequiredFiles();
+  const faviconPath = absolutePath('docs/favicon.svg');
+
+  assert.ok(fs.existsSync(faviconPath), 'docs/favicon.svg must exist');
+  assert.ok(fs.statSync(faviconPath).isFile(), 'docs/favicon.svg must be a regular file');
+
+  const favicon = fs.readFileSync(faviconPath, 'utf8');
+  assert.notEqual(favicon.trim(), '', 'docs/favicon.svg must not be empty');
+  assert.match(favicon, /<svg\b/i, 'docs/favicon.svg must be an SVG document');
+  assert.doesNotMatch(favicon, /<script\b/i, 'docs/favicon.svg must not contain scripts');
+  assert.doesNotMatch(favicon, /\b(?:href|src)\s*=\s*["'](?:https?:|\/\/|data:)/i);
+
+  const linkTags = html.match(/<link\b[^>]*>/gi) ?? [];
+  const iconLinks = linkTags.filter((tag) => (getAttribute(tag, 'rel') || '').toLowerCase() === 'icon');
+
+  assert.equal(iconLinks.length, 1, 'HTML must include exactly one rel="icon" link');
+  assert.equal(getAttribute(iconLinks[0], 'href'), './favicon.svg');
+  assert.equal(getAttribute(iconLinks[0], 'type'), 'image/svg+xml');
+});
+
+test('release resource links are sanitized as HTTPS-only URLs', () => {
+  const { main } = readRequiredFiles();
+
+  assert.match(main, /\bfunction\s+safeHttpsUrl\s*\(/, 'main.js must expose a safeHttpsUrl helper');
+  assert.ok(main.includes('^https:\\/\\/'), 'safeHttpsUrl must require an https:// prefix');
+  assert.doesNotMatch(main, /\^https\?:\\\/\\\//, 'safeHttpsUrl must not allow http:// prefixes');
+  assert.match(
+    main,
+    /\bparsed\.protocol\s*===\s*['"]https:['"]/,
+    'safeHttpsUrl must verify the parsed protocol is https:',
+  );
+  assert.doesNotMatch(
+    main,
+    /\bparsed\.protocol\s*===\s*['"]http:['"]/,
+    'safeHttpsUrl must not accept parsed http: URLs',
+  );
+});
+
+test('README documents release media reference tooling and byte-level reproducibility limits', () => {
+  const readme = fs.readFileSync(absolutePath('README.md'), 'utf8');
+
+  assert.match(readme, /FFmpeg\/ffprobe 4\.2\.2/);
+  assert.match(readme, /Ghostscript 10\.07\.1/);
+  assert.match(readme, /cwebp 1\.6\.0/);
+  assert.doesNotMatch(readme, /cwebp 1\.3\.2/);
+  assert.match(readme, /exact bytes may differ/i);
+  assert.match(readme, /builds\/platforms|platforms\/builds/i);
+  assert.match(readme, /validator verifies/i);
+  assert.match(readme, /counts/i);
+  assert.match(readme, /mappings/i);
+  assert.match(readme, /codecs/i);
+  assert.match(readme, /public boundary/i);
+  assert.match(readme, /future resource URLs must be HTTPS/i);
+});
+
 test('Table 1 metrics expose verified RoboReact results', () => {
   const { html } = readRequiredFiles();
   const config = loadConfig();
