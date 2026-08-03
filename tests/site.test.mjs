@@ -2,7 +2,6 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import vm from 'node:vm';
 
 const root = process.cwd();
 const docsRoot = path.join(root, 'docs');
@@ -53,13 +52,13 @@ function readRequiredFiles() {
 
 function loadConfig() {
   const { config: configSource } = readRequiredFiles();
-  const context = {};
-  context.globalThis = context;
-  vm.createContext(context);
-  vm.runInContext(configSource, context);
+  const wrapper =
+    /^\s*globalThis\.ROBOREACT_CONFIG\s*=\s*JSON\.parse\(String\.raw`\r?\n([\s\S]*?)\r?\n`\);\s*$/;
+  const match = configSource.match(wrapper);
 
-  assert.ok(context.ROBOREACT_CONFIG, 'config.js must define globalThis.ROBOREACT_CONFIG');
-  return context.ROBOREACT_CONFIG;
+  assert.ok(match, 'config.js must contain only the declarative JSON.parse(String.raw`...`) wrapper');
+  assert.doesNotMatch(match[1], /`|\$\{/, 'config JSON payload must not contain template syntax');
+  return JSON.parse(match[1]);
 }
 
 function getVideos(config) {
