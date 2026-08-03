@@ -1,0 +1,299 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import vm from 'node:vm';
+
+const root = process.cwd();
+const docsRoot = path.join(root, 'docs');
+
+const requiredFiles = {
+  html: 'docs/index.html',
+  css: 'docs/assets/css/styles.css',
+  config: 'docs/assets/js/config.js',
+  main: 'docs/assets/js/main.js',
+};
+
+const expectedTitle =
+  'RoboReact: Agentic Skill Distillation from Generated Egocentric Videos for Generalizable Whole-Body Manipulation';
+
+const expectedTaskSuccessRates = {
+  handOver: 85,
+  openBox: 70,
+  pourWater: 85,
+  openDrawer: 85,
+};
+
+const forbiddenPublicPattern =
+  /anonymous\s*submission|anonymized\s+submission|strictly\s+prohibited|public\s+sharing\s+of\s+this\s+manuscript|\+36\.3|TBD|RoboReact_Agentic_Skill_\.pdf/i;
+
+function absolutePath(relativePath) {
+  return path.join(root, relativePath);
+}
+
+function assertRequiredFilesExist() {
+  for (const [label, relativePath] of Object.entries(requiredFiles)) {
+    assert.ok(
+      fs.existsSync(absolutePath(relativePath)),
+      `Required ${label} file is missing: ${relativePath}`,
+    );
+  }
+}
+
+function readRequiredFiles() {
+  assertRequiredFilesExist();
+
+  return Object.fromEntries(
+    Object.entries(requiredFiles).map(([label, relativePath]) => [
+      label,
+      fs.readFileSync(absolutePath(relativePath), 'utf8'),
+    ]),
+  );
+}
+
+function loadConfig() {
+  const { config: configSource } = readRequiredFiles();
+  const context = {};
+  context.globalThis = context;
+  vm.createContext(context);
+  vm.runInContext(configSource, context);
+
+  assert.ok(context.ROBOREACT_CONFIG, 'config.js must define globalThis.ROBOREACT_CONFIG');
+  return context.ROBOREACT_CONFIG;
+}
+
+function getVideos(config) {
+  assert.ok(Array.isArray(config.videos), 'ROBOREACT_CONFIG.videos must be an array');
+  return config.videos;
+}
+
+function getSpeedLabel(video) {
+  return video.speedLabel ?? video.playbackSpeedLabel ?? video.rateLabel;
+}
+
+function getResultMetric(config, key) {
+  if (config.results && Object.hasOwn(config.results, key)) {
+    return config.results[key];
+  }
+
+  if (config.metrics && Object.hasOwn(config.metrics, key)) {
+    return config.metrics[key];
+  }
+
+  return undefined;
+}
+
+function getTaskRates(config) {
+  const candidates = [
+    config.taskSuccessRates,
+    config.table1?.taskSuccessRates,
+    config.results?.taskSuccessRates,
+    config.metrics?.taskSuccessRates,
+  ];
+
+  for (const candidate of candidates) {
+    if (candidate && typeof candidate === 'object' && !Array.isArray(candidate)) {
+      return candidate;
+    }
+  }
+
+  return undefined;
+}
+
+function assertUniqueNonEmpty(videos, propertyName) {
+  const values = videos.map((video) => video[propertyName]);
+  assert.equal(
+    values.length,
+    new Set(values).size,
+    `videos must have unique ${propertyName} values`,
+  );
+
+  for (const value of values) {
+    assert.equal(typeof value, 'string', `video ${propertyName} must be a string`);
+    assert.notEqual(value.trim(), '', `video ${propertyName} must be non-empty`);
+  }
+}
+
+function assertLocalDocsFile(publicPath, label) {
+  assert.equal(typeof publicPath, 'string', `${label} must be a string`);
+  assert.notEqual(publicPath.trim(), '', `${label} must be non-empty`);
+  assert.equal(publicPath, publicPath.trim(), `${label} must not contain surrounding whitespace`);
+  assert.doesNotMatch(publicPath, /^[a-z][a-z0-9+.-]*:/i, `${label} must be a local path`);
+  assert.doesNotMatch(publicPath, /^\/\//, `${label} must not be protocol-relative`);
+  assert.equal(path.isAbsolute(publicPath), false, `${label} must not be an absolute path`);
+  assert.equal(publicPath.startsWith('/'), false, `${label} must not be root-relative`);
+  assert.equal(publicPath.includes('\\'), false, `${label} must use URL-style forward slashes`);
+  assert.equal(publicPath.includes('?'), false, `${label} must not include a query string`);
+  assert.equal(publicPath.includes('#'), false, `${label} must not include a fragment`);
+  assert.equal(
+    publicPath.split('/').includes('..'),
+    false,
+    `${label} must not contain path traversal`,
+  );
+
+  const resolvedPath = path.resolve(docsRoot, publicPath);
+  const relativeToDocs = path.relative(docsRoot, resolvedPath);
+  assert.equal(
+    relativeToDocs === '..' || relativeToDocs.startsWith(`..${path.sep}`) || path.isAbsolute(relativeToDocs),
+    false,
+    `${label} must resolve under docs/`,
+  );
+  assert.ok(fs.existsSync(resolvedPath), `${label} file must exist under docs/: ${publicPath}`);
+  assert.ok(fs.statSync(resolvedPath).isFile(), `${label} must resolve to a file: ${publicPath}`);
+}
+
+function getAttribute(tag, attributeName) {
+  const quotedPattern = new RegExp(`\\b${attributeName}\\s*=\\s*(["'])(.*?)\\1`, 'i');
+  const quotedMatch = tag.match(quotedPattern);
+  if (quotedMatch) {
+    return quotedMatch[2];
+  }
+
+  const unquotedPattern = new RegExp(`\\b${attributeName}\\s*=\\s*([^\\s>]+)`, 'i');
+  const unquotedMatch = tag.match(unquotedPattern);
+  return unquotedMatch?.[1];
+}
+
+test('required production files exist before contract assertions run', () => {
+  assertRequiredFilesExist();
+});
+
+test('site exposes the exact paper title in HTML and config', () => {
+  const { html } = readRequiredFiles();
+  const config = loadConfig();
+
+  assert.match(html, new RegExp(expectedTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  assert.equal(config.title, expectedTitle);
+});
+
+test('video configuration has exactly 16 unique public videos', () => {
+  const videos = getVideos(loadConfig());
+
+  assert.equal(videos.length, 16, 'ROBOREACT_CONFIG.videos must contain exactly 16 videos');
+  assertUniqueNonEmpty(videos, 'id');
+  assertUniqueNonEmpty(videos, 'src');
+  assertUniqueNonEmpty(videos, 'poster');
+});
+
+test('video source and poster assets are local files under docs', () => {
+  const videos = getVideos(loadConfig());
+
+  for (const video of videos) {
+    assertLocalDocsFile(video.src, `${video.id} src`);
+    assertLocalDocsFile(video.poster, `${video.id} poster`);
+  }
+});
+
+test('only highlight-pour-water autoplays and speed labels match the paper site contract', () => {
+  const videos = getVideos(loadConfig());
+  const autoplayVideos = videos.filter((video) => video.autoplay === true);
+
+  assert.deepEqual(
+    Array.from(autoplayVideos, (video) => video.id),
+    ['highlight-pour-water'],
+    'only highlight-pour-water may autoplay',
+  );
+
+  for (const video of videos) {
+    const expectedLabel =
+      video.id === 'highlight-pour-water'
+        ? '10x'
+        : video.id === 'cross-object-open-drawer'
+          ? '2x'
+          : '5x';
+
+    assert.equal(
+      String(getSpeedLabel(video)).replace('×', 'x'),
+      expectedLabel,
+      `${video.id} must display speed label ${expectedLabel.replace('x', '×')}`,
+    );
+  }
+});
+
+test('release metadata remains hidden until public artifacts are ready', () => {
+  const config = loadConfig();
+
+  assert.ok(config.release, 'config.release must exist with explicit null metadata fields');
+  assert.ok(Array.isArray(config.release.authors), 'release authors must be an array');
+  assert.equal(config.release.authors.length, 0, 'release authors must stay hidden');
+  assert.ok(Array.isArray(config.release.affiliations), 'release affiliations must be an array');
+  assert.equal(config.release.affiliations.length, 0, 'release affiliations must stay hidden');
+  assert.equal(config.release.venue, null, 'release venue must be null');
+  assert.equal(config.release.contact, null, 'release contact must be null');
+  assert.equal(config.release.bibtex, null, 'release BibTeX must be null');
+  assert.ok(config.release.resources, 'config.release.resources must exist');
+  assert.equal(config.release.resources.paper, null, 'paper resource URL must be null');
+  assert.equal(config.release.resources.arxiv, null, 'arXiv resource URL must be null');
+  assert.equal(config.release.resources.code, null, 'code resource URL must be null');
+  assert.equal(config.release.resources.dataset, null, 'dataset resource URL must be null');
+  assert.equal(
+    config.release.resources.supplementary,
+    null,
+    'supplementary resource URL must be null',
+  );
+});
+
+test('Table 1 metrics expose verified RoboReact results', () => {
+  const { html } = readRequiredFiles();
+  const config = loadConfig();
+  const taskRates = getTaskRates(config);
+
+  assert.ok(taskRates, 'config must expose Table 1 task success rates');
+  assert.equal(getResultMetric(config, 'meanSuccessRate'), 81.3);
+  assert.equal(getResultMetric(config, 'meanAverageCompletedLength'), 4.2);
+  assert.match(html, /\b81\.3\b/, 'HTML must display the verified mean success rate 81.3');
+  assert.match(html, /\b4\.20\b/, 'HTML must display the verified mean average completed length 4.20');
+
+  for (const [taskId, successRate] of Object.entries(expectedTaskSuccessRates)) {
+    assert.equal(taskRates[taskId], successRate, `Table 1 SR for ${taskId} must be ${successRate}`);
+  }
+});
+
+test('main.js leaves playback speed to media files instead of forcing playbackRate', () => {
+  const { main } = readRequiredFiles();
+
+  assert.doesNotMatch(main, /\bplaybackRate\b/);
+});
+
+test('CSS supports reduced motion and visible keyboard focus', () => {
+  const { css } = readRequiredFiles();
+
+  assert.match(css, /prefers-reduced-motion/);
+  assert.match(css, /:focus-visible/);
+});
+
+test('HTML includes semantic anchors and accessible figure hooks', () => {
+  const { html } = readRequiredFiles();
+
+  for (const anchor of [
+    'teaser',
+    'overview',
+    'method',
+    'videos',
+    'results',
+  ]) {
+    assert.match(
+      html,
+      new RegExp(`<(?:section|article|main|div|nav|a)[^>]+id=["']${anchor}["']`, 'i'),
+      `HTML must include semantic anchor #${anchor}`,
+    );
+  }
+
+  assert.match(html, /<figure\b/i, 'HTML must include figure elements');
+  const imageTags = html.match(/<img\b[^>]*>/gi) ?? [];
+  assert.ok(imageTags.length > 0, 'HTML must include image elements');
+
+  for (const [index, imageTag] of imageTags.entries()) {
+    const alt = getAttribute(imageTag, 'alt');
+    assert.equal(typeof alt, 'string', `image ${index + 1} must include an alt attribute`);
+    assert.notEqual(alt.trim(), '', `image ${index + 1} alt attribute must be non-empty`);
+  }
+});
+
+test('public source never includes private-review or placeholder strings', () => {
+  const files = readRequiredFiles();
+
+  for (const [label, source] of Object.entries(files)) {
+    assert.doesNotMatch(source, forbiddenPublicPattern, `${label} contains forbidden public string`);
+  }
+});
