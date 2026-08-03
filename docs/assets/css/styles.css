@@ -37,7 +37,7 @@
 
 html {
   scroll-behavior: smooth;
-  scroll-padding-top: 1.5rem;
+  scroll-padding-top: 0;
 }
 
 body {
@@ -449,6 +449,11 @@ main:focus-visible,
 .section {
   margin-top: clamp(1rem, 2vw, 1.5rem);
   padding: clamp(1.4rem, 4vw, 3.5rem);
+  scroll-margin-top: 1.5rem;
+}
+
+#top,
+#main-content {
   scroll-margin-top: 1.5rem;
 }
 
@@ -968,10 +973,6 @@ main:focus-visible,
 }
 
 @media (max-width: 1024px) {
-  html {
-    scroll-padding-top: 8.5rem;
-  }
-
   .site-shell {
     display: block;
     width: 100%;
@@ -1059,8 +1060,10 @@ main:focus-visible,
     font-size: 3.6rem;
   }
 
-  .section {
-    scroll-margin-top: 8.5rem;
+  .section,
+  #top,
+  #main-content {
+    scroll-margin-top: 7.5rem;
   }
 
   .section h2 {
