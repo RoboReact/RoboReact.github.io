@@ -1,0 +1,525 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta
+      name="description"
+      content="RoboReact distills generalizable whole-body manipulation skills from generated egocentric videos, starting from one RGB-D observation and a language instruction."
+    >
+    <meta name="theme-color" content="#f4f1eb">
+    <meta name="color-scheme" content="light">
+    <meta property="og:type" content="website">
+    <meta
+      property="og:title"
+      content="RoboReact: Agentic Skill Distillation from Generated Egocentric Videos for Generalizable Whole-Body Manipulation"
+    >
+    <meta
+      property="og:description"
+      content="A research project page for whole-body manipulation skills distilled from generated egocentric videos."
+    >
+    <title>RoboReact: Agentic Skill Distillation from Generated Egocentric Videos for Generalizable Whole-Body Manipulation</title>
+    <link rel="stylesheet" href="./assets/css/styles.css">
+    <script src="./assets/js/config.js" defer></script>
+    <script src="./assets/js/main.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <div class="site-shell">
+      <aside class="research-index research-index--desktop" aria-label="Research index">
+        <a class="research-index__wordmark" href="#top" aria-label="RoboReact, back to top">
+          RoboReact
+        </a>
+        <p class="research-index__label">Research index</p>
+        <nav aria-label="Project sections">
+          <ol class="research-index__list">
+            <li><a href="#teaser"><span aria-hidden="true">01</span> Teaser</a></li>
+            <li><a href="#overview"><span aria-hidden="true">02</span> Overview</a></li>
+            <li><a href="#method"><span aria-hidden="true">03</span> Method</a></li>
+            <li><a href="#videos"><span aria-hidden="true">04</span> Videos</a></li>
+            <li><a href="#results"><span aria-hidden="true">05</span> Results</a></li>
+            <li data-citation-nav hidden>
+              <a href="#citation"><span aria-hidden="true">06</span> Citation</a>
+            </li>
+          </ol>
+        </nav>
+      </aside>
+
+      <div class="page-column">
+        <header class="mobile-header" aria-label="Mobile research index">
+          <a class="mobile-header__wordmark" href="#top" aria-label="RoboReact, back to top">
+            RoboReact
+          </a>
+          <nav aria-label="Project sections">
+            <ul class="mobile-nav">
+              <li><a href="#teaser">Teaser</a></li>
+              <li><a href="#overview">Overview</a></li>
+              <li><a href="#method">Method</a></li>
+              <li><a href="#videos">Videos</a></li>
+              <li><a href="#results">Results</a></li>
+              <li data-citation-nav hidden><a href="#citation">Citation</a></li>
+            </ul>
+          </nav>
+        </header>
+
+        <header class="hero" id="top">
+          <div class="content-frame content-frame--wide">
+            <p class="eyebrow">Generated-video skill distillation</p>
+            <p class="hero__wordmark" aria-hidden="true">RoboReact</p>
+            <h1>
+              RoboReact: Agentic Skill Distillation from Generated Egocentric Videos for
+              Generalizable Whole-Body Manipulation
+            </h1>
+            <div class="hero__summary">
+              <p>
+                RoboReact turns a single egocentric RGB-D observation and a language instruction
+                into a reusable whole-body manipulation skill, using a generated human interaction
+                video as its procedural prior.
+              </p>
+              <p>
+                It compiles and calibrates object-centric keyframes offline, then freezes the skill
+                for online re-grounding and execution without VLM access in the test-time control
+                loop.
+              </p>
+            </div>
+
+            <div
+              class="release-metadata"
+              id="release-metadata"
+              data-release-metadata
+              aria-live="polite"
+              hidden
+            >
+              <p id="release-authors" data-release-authors></p>
+              <p id="release-affiliations" data-release-affiliations></p>
+              <p id="release-venue" data-release-venue></p>
+              <p id="release-contact" data-release-contact></p>
+            </div>
+            <nav
+              class="resource-links"
+              id="resource-links"
+              data-resource-links
+              aria-label="Project resources"
+              hidden
+            ></nav>
+
+            <ul class="fact-tags" aria-label="Method characteristics">
+              <li>Single RGB-D source</li>
+              <li>No teleoperation or human demonstrations</li>
+              <li>Frozen at test time</li>
+            </ul>
+
+            <dl class="headline-metrics" aria-label="Headline results">
+              <div class="metric-card">
+                <dt>Mean terminal success</dt>
+                <dd>81.3%</dd>
+              </div>
+              <div class="metric-card">
+                <dt>Mean completed task length</dt>
+                <dd>4.20</dd>
+              </div>
+              <div class="metric-card">
+                <dt>Long-horizon tasks</dt>
+                <dd>4</dd>
+              </div>
+              <div class="metric-card">
+                <dt>Test-time VLM access</dt>
+                <dd>No</dd>
+              </div>
+            </dl>
+          </div>
+        </header>
+
+        <main id="main-content" tabindex="-1">
+          <section class="section section--media" id="teaser" aria-labelledby="teaser-heading">
+            <div class="content-frame content-frame--wide">
+              <div class="section-heading">
+                <p class="section-number" aria-hidden="true">01</p>
+                <div>
+                  <p class="eyebrow">From generated interaction to robot execution</p>
+                  <h2 id="teaser-heading">Teaser</h2>
+                </div>
+              </div>
+              <figure class="paper-figure paper-figure--teaser">
+                <img
+                  src="./assets/images/teaser.webp"
+                  width="1040"
+                  height="590"
+                  alt="RoboReact overview showing a generated egocentric human manipulation video distilled into a whole-body robot skill that re-grounds to changed object poses"
+                  fetchpriority="high"
+                >
+                <figcaption>
+                  <span class="figure-label">Figure 1.</span> From one RGB-D scene observation and
+                  a language instruction, RoboReact uses a generated egocentric interaction video
+                  to construct, refine, and deploy an object-centric whole-body skill.
+                </figcaption>
+              </figure>
+            </div>
+          </section>
+
+          <section class="section" id="overview" aria-labelledby="overview-heading">
+            <div class="content-frame">
+              <div class="section-heading">
+                <p class="section-number" aria-hidden="true">02</p>
+                <div>
+                  <p class="eyebrow">Why RoboReact</p>
+                  <h2 id="overview-heading">Overview</h2>
+                </div>
+              </div>
+
+              <div class="prose prose--lead">
+                <p>
+                  Existing whole-body skill acquisition often depends on teleoperation,
+                  human-motion retargeting, or costly learning. RoboReact instead begins with a
+                  single egocentric RGB-D observation and a language instruction, then uses a
+                  generated human interaction video to supply the task's temporal and geometric
+                  structure.
+                </p>
+                <p>
+                  The system compiles object-centric keyframes that preserve hand-object geometry.
+                  Calibration rollouts are then reviewed by a frozen VLM, whose proposed bounded
+                  edits are projected to controller-feasible targets. After refinement, the skill
+                  is frozen and re-grounded from current object poses at execution.
+                </p>
+              </div>
+
+              <div class="contribution-grid" aria-label="Core contributions">
+                <article class="contribution-card">
+                  <p class="card-kicker">01 / Procedural prior</p>
+                  <h3>Generated egocentric interaction</h3>
+                  <p>
+                    Candidate human-object videos provide a task-level sequence without requiring
+                    teleoperated or recorded human demonstrations.
+                  </p>
+                </article>
+                <article class="contribution-card">
+                  <p class="card-kicker">02 / Representation</p>
+                  <h3>Object-centric keyframes</h3>
+                  <p>
+                    Hand-object relations are compiled into keyframes tied to object coordinates,
+                    retaining the interaction geometry needed for re-grounding.
+                  </p>
+                </article>
+                <article class="contribution-card">
+                  <p class="card-kicker">03 / Refinement</p>
+                  <h3>Bounded calibration edits</h3>
+                  <p>
+                    Rollout history informs local keyframe edits, while feasibility projection
+                    keeps the updated targets within the controller's executable space.
+                  </p>
+                </article>
+                <article class="contribution-card">
+                  <p class="card-kicker">04 / Deployment</p>
+                  <h3>Frozen, re-grounded execution</h3>
+                  <p>
+                    The refined skill is fixed before evaluation and transforms its keyframes from
+                    the current object poses at run time.
+                  </p>
+                </article>
+              </div>
+            </div>
+          </section>
+
+          <section class="section section--method" id="method" aria-labelledby="method-heading">
+            <div class="content-frame content-frame--wide">
+              <div class="section-heading">
+                <p class="section-number" aria-hidden="true">03</p>
+                <div>
+                  <p class="eyebrow">An offline-to-online pipeline</p>
+                  <h2 id="method-heading">Method</h2>
+                </div>
+              </div>
+
+              <figure class="paper-figure paper-figure--pipeline">
+                <img
+                  src="./assets/images/pipeline.webp"
+                  width="2045"
+                  height="975"
+                  alt="RoboReact pipeline with four stages for video generation and selection, motion recovery and keyframe compilation, calibration refinement, and re-grounded whole-body execution"
+                  loading="lazy"
+                >
+                <figcaption>
+                  <span class="figure-label">Figure 2.</span> The four-stage pipeline turns a
+                  selected generated interaction into an object-centric skill, refines it through
+                  calibration, and deploys it with scene-conditioned re-grounding.
+                </figcaption>
+              </figure>
+
+              <ol class="method-steps">
+                <li>
+                  <p class="method-step__number" aria-hidden="true">01</p>
+                  <div>
+                    <h3>Generate &amp; select</h3>
+                    <p>
+                      Generate candidate egocentric human interaction videos from the initial
+                      RGB-D observation and task language, then select a suitable task realization.
+                    </p>
+                  </div>
+                </li>
+                <li>
+                  <p class="method-step__number" aria-hidden="true">02</p>
+                  <div>
+                    <h3>Recover &amp; compile</h3>
+                    <p>
+                      Recover hand-object motion and compile a compact sequence of object-centric
+                      keyframes that preserves the interaction geometry.
+                    </p>
+                  </div>
+                </li>
+                <li>
+                  <p class="method-step__number" aria-hidden="true">03</p>
+                  <div>
+                    <h3>Calibrate &amp; refine</h3>
+                    <p>
+                      Run calibration rollouts, use the frozen VLM to propose bounded local edits
+                      from the accumulated history, and project those edits to feasible targets.
+                    </p>
+                  </div>
+                </li>
+                <li>
+                  <p class="method-step__number" aria-hidden="true">04</p>
+                  <div>
+                    <h3>Re-ground &amp; execute</h3>
+                    <p>
+                      Freeze the refined skill, transform its keyframes from current object poses,
+                      and track them with the whole-body controller.
+                    </p>
+                  </div>
+                </li>
+              </ol>
+
+              <aside class="method-note" aria-label="Test-time execution boundary">
+                <p class="method-note__label">Execution boundary</p>
+                <p>
+                  The VLM participates only in offline calibration and refinement. Once refinement
+                  is complete, it is absent from the test-time control loop; the fixed keyframe
+                  program is re-grounded from current object poses and executed by the whole-body
+                  controller.
+                </p>
+              </aside>
+            </div>
+          </section>
+
+          <section class="section" id="videos" aria-labelledby="videos-heading">
+            <div class="content-frame content-frame--wide">
+              <div class="section-heading">
+                <p class="section-number" aria-hidden="true">04</p>
+                <div>
+                  <p class="eyebrow">Evaluation recordings</p>
+                  <h2 id="videos-heading">Video gallery</h2>
+                </div>
+              </div>
+
+              <p class="section-intro">
+                The visible 10×, 5×, and 2× badges describe acceleration already encoded in the
+                supplied media. They are labels only; playback remains under the browser's native
+                media controls.
+              </p>
+
+              <section class="video-group video-group--featured" aria-labelledby="featured-heading">
+                <div class="video-group__heading">
+                  <p class="card-kicker">Featured result</p>
+                  <h3 id="featured-heading">Pour Water highlight</h3>
+                </div>
+                <div
+                  class="featured-video"
+                  id="featured-video"
+                  data-video-category="featured"
+                  aria-live="polite"
+                ></div>
+              </section>
+
+              <section class="video-group" aria-labelledby="main-videos-heading">
+                <div class="video-group__heading">
+                  <p class="card-kicker">Canonical evaluation</p>
+                  <h3 id="main-videos-heading">Four main tasks</h3>
+                  <p>Hand Over, Open Box, Pour Water, and Open Drawer.</p>
+                </div>
+                <div class="video-grid" data-video-category="main"></div>
+              </section>
+
+              <section class="video-group" aria-labelledby="cross-object-heading">
+                <div class="video-group__heading">
+                  <p class="card-kicker">Object variation</p>
+                  <h3 id="cross-object-heading">Cross-object generalization</h3>
+                  <p>Five Open Box object instances plus one Open Drawer trial.</p>
+                </div>
+                <div class="video-grid" data-video-category="crossObject"></div>
+              </section>
+
+              <section class="video-group" aria-labelledby="varied-pose-heading">
+                <div class="video-group__heading">
+                  <p class="card-kicker">Robot configuration</p>
+                  <h3 id="varied-pose-heading">Varied-pose generalization</h3>
+                  <p>Two Pour Water trials plus one Open Drawer trial from varied robot poses.</p>
+                </div>
+                <div class="video-grid" data-video-category="variedPose"></div>
+              </section>
+
+              <section class="video-group" aria-labelledby="squat-heading">
+                <div class="video-group__heading">
+                  <p class="card-kicker">Coordinated whole-body motion</p>
+                  <h3 id="squat-heading">Squat and manipulation</h3>
+                  <p>Two Pour Water sequences coupling squatting with manipulation.</p>
+                </div>
+                <div class="video-grid" data-video-category="squat"></div>
+              </section>
+
+              <noscript>
+                <p class="noscript-notice">
+                  JavaScript is required only to render the demonstration videos; the paper
+                  overview, method, figures, and results remain available on this page.
+                </p>
+              </noscript>
+            </div>
+          </section>
+
+          <section class="section section--results" id="results" aria-labelledby="results-heading">
+            <div class="content-frame content-frame--wide">
+              <div class="section-heading">
+                <p class="section-number" aria-hidden="true">05</p>
+                <div>
+                  <p class="eyebrow">Reported evaluation</p>
+                  <h2 id="results-heading">Results</h2>
+                </div>
+              </div>
+
+              <p class="section-intro">
+                SR denotes terminal success rate: the percentage of rollouts that complete the
+                task. Avg. Len. denotes the average number of task steps completed per rollout.
+              </p>
+
+              <div
+                class="table-region"
+                role="region"
+                aria-label="Task-level terminal success rate comparison"
+                tabindex="0"
+              >
+                <table>
+                  <caption>
+                    Table 1. Terminal success rate (%) on the four long-horizon manipulation tasks.
+                  </caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">Method</th>
+                      <th scope="col">Hand Over</th>
+                      <th scope="col">Open Box</th>
+                      <th scope="col">Pour Water</th>
+                      <th scope="col">Open Drawer</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <th scope="row">ReKep</th>
+                      <td>35</td>
+                      <td>15</td>
+                      <td>40</td>
+                      <td>20</td>
+                    </tr>
+                    <tr>
+                      <th scope="row">YOTO</th>
+                      <td>75</td>
+                      <td>65</td>
+                      <td>80</td>
+                      <td>75</td>
+                    </tr>
+                    <tr>
+                      <th scope="row">One-Shot Real Prior</th>
+                      <td>85</td>
+                      <td>70</td>
+                      <td>80</td>
+                      <td>85</td>
+                    </tr>
+                    <tr class="table-row--primary">
+                      <th scope="row">RoboReact</th>
+                      <td><strong>85</strong></td>
+                      <td><strong>70</strong></td>
+                      <td><strong>85</strong></td>
+                      <td><strong>85</strong></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div class="evidence-grid" aria-label="Additional reported evidence">
+                <article class="evidence-card">
+                  <p class="card-kicker">15 refinement rounds</p>
+                  <h3>Calibration improves task completion</h3>
+                  <p>
+                    Hand Over and Pour Water each reached <strong>11/13</strong> terminal
+                    completions, with Avg. Len. of <strong>4.69</strong> and
+                    <strong>5.38</strong>, respectively.
+                  </p>
+                </article>
+                <article class="evidence-card">
+                  <p class="card-kicker">Editor comparison</p>
+                  <h3>5.6-ultra at 15 rounds</h3>
+                  <p>
+                    Pour Water reached <strong>84.6%</strong> SR / <strong>5.38</strong> Avg. Len.;
+                    Open Box reached <strong>76.9%</strong> SR / <strong>3.23</strong> Avg. Len.
+                  </p>
+                </article>
+                <article class="evidence-card">
+                  <p class="card-kicker">Component ablation</p>
+                  <h3>Each refinement component contributes</h3>
+                  <p>
+                    The full system achieved <strong>5.62</strong> Avg. Len., compared with
+                    <strong>3.69</strong> without keyframe selection, <strong>3.92</strong> without
+                    memory, and <strong>4.77</strong> without third-person feedback.
+                  </p>
+                </article>
+                <article class="evidence-card">
+                  <p class="card-kicker">Video-generator comparison</p>
+                  <h3>Seedance 2.0</h3>
+                  <p>
+                    Seedance 2.0 reached <strong>92.3%</strong> SR / <strong>5.62</strong> Avg. Len.
+                    on Pour Water and <strong>84.6%</strong> / <strong>3.54</strong> on Open Drawer.
+                    In the same comparison, Seedance 1.5 Pro reported
+                    <strong>84.6%</strong> / <strong>5.23</strong> and
+                    <strong>69.2%</strong> / <strong>3.00</strong>, respectively.
+                  </p>
+                </article>
+                <article class="evidence-card evidence-card--wide">
+                  <p class="card-kicker">Frozen-stack robustness</p>
+                  <h3>Execution under whole-body perturbations</h3>
+                  <p>
+                    Across the reported robustness cases, the frozen execution stack retained
+                    <strong>80–94%</strong> of nominal Avg. Len. Terminal completions were
+                    <strong>9/13</strong> in the squatting-perturbation case and
+                    <strong>12/13</strong> in the undisturbed case.
+                  </p>
+                </article>
+              </div>
+            </div>
+          </section>
+
+          <section class="section section--citation" id="citation" aria-labelledby="citation-heading" hidden>
+            <div class="content-frame">
+              <div class="section-heading">
+                <p class="section-number" aria-hidden="true">06</p>
+                <div>
+                  <p class="eyebrow">Reference</p>
+                  <h2 id="citation-heading">Citation</h2>
+                </div>
+              </div>
+              <div id="citation-mount" data-citation-mount></div>
+              <p id="citation-status" class="sr-only" aria-live="polite"></p>
+            </div>
+          </section>
+        </main>
+
+        <footer class="site-footer">
+          <div class="content-frame content-frame--wide">
+            <p class="site-footer__title">
+              RoboReact: Agentic Skill Distillation from Generated Egocentric Videos for
+              Generalizable Whole-Body Manipulation
+            </p>
+            <p>Academic research project page.</p>
+            <p id="footer-contact" data-footer-contact hidden></p>
+          </div>
+        </footer>
+      </div>
+    </div>
+  </body>
+</html>
