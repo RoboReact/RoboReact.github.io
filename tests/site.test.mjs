@@ -817,6 +817,35 @@ test('Table 1 metrics expose verified RoboReact results', () => {
   }
 });
 
+test('headline metric labels and values stay grouped without a blank spacer', () => {
+  const { css } = readRequiredFiles();
+  const cardRule = findCssRule(
+    css,
+    (selector) => selector.trim() === '.metric-card',
+    'CSS must define the base .metric-card rule',
+  );
+  const valueRule = findCssRule(
+    css,
+    (selector) => selector.trim() === '.metric-card dd',
+    'CSS must define the base .metric-card dd rule',
+  );
+
+  assert.match(cardRule.body, /\bjustify-content\s*:\s*center\s*;/);
+  assert.match(cardRule.body, /\bgap\s*:\s*0\.35rem\s*;/);
+  assert.match(valueRule.body, /\bpadding-top\s*:\s*0\s*;/);
+});
+
+test('headline metric describes test-time VLM access as frozen', () => {
+  const { html } = readRequiredFiles();
+
+  assert.match(
+    html,
+    /<dt>Test-time VLM access<\/dt>\s*<dd>Frozen<\/dd>/,
+    'the VLM access metric must communicate that access is frozen at test time',
+  );
+  assert.doesNotMatch(html, /<dt>Test-time VLM access<\/dt>\s*<dd>No<\/dd>/);
+});
+
 test('main.js leaves playback speed to media files instead of forcing playbackRate', () => {
   const { main } = readRequiredFiles();
 

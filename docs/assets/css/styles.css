@@ -591,7 +591,8 @@ main:focus-visible,
   display: flex;
   min-height: 7.5rem;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: center;
+  gap: 0.35rem;
   padding: 1rem;
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
@@ -606,7 +607,7 @@ main:focus-visible,
 }
 
 .metric-card dd {
-  padding-top: 0.7rem;
+  padding-top: 0;
   color: var(--ink);
   font-size: 2rem;
   font-weight: 790;
