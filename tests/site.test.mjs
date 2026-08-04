@@ -691,6 +691,22 @@ test('hero uses the approved cinematic palette', () => {
   assert.doesNotMatch(css, /#fff8ef\b/i, 'hero CSS must not use obsolete #fff8ef');
 });
 
+test('print keeps release resource links hidden', () => {
+  const { css } = readRequiredFiles();
+  const printCss = findCssAtRuleBlock(css, /@media\s+print\b/, 'CSS must define @media print');
+  const printResourceRule = findCssRule(
+    printCss,
+    (selector) => selectorHasClass(selector, 'resource-links'),
+    'print CSS must keep .resource-links hidden',
+  );
+
+  assertSourceMatch(
+    printResourceRule.body,
+    /\bdisplay\s*:\s*none\s*!important\b/,
+    'print .resource-links rule must set display: none !important',
+  );
+});
+
 test('hero generator pins its encoder and exits cleanly on signals', () => {
   const generatorPath = absolutePath('scripts/prepare-hero-filmstrips.sh');
 
