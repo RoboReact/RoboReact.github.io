@@ -1,12 +1,13 @@
-/.worktrees/
-/.omx/
-/.superpowers/
-/RoboReact_Agentic_Skill_.pdf
-/summary.txt
-/A_Highlight_Varied_pose_experiment/
-/Cross_object_experiment/
-/Four_main_task/
-/Squat_and_manipulation_experiment/
-/Varied_pose_experiment/
+# Ignore every repository-root entry by default. Only the release site,
+# its validation tooling, and essential repository metadata are allowlisted.
+/*
+
+!/.gitignore
+!/README.md
+!/docs/
+!/scripts/
+!/tests/
+
+# Keep generated planning material and macOS metadata out of the release tree.
 /docs/superpowers/
 .DS_Store
