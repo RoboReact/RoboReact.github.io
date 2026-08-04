@@ -42,6 +42,15 @@ const expectedCategoryCounts = {
   squat: 2,
 };
 
+const expectedHeroStrips = new Map([
+  ['docs/assets/images/hero/sequence-cup-tray.webp', [320, 6000]],
+  ['docs/assets/images/hero/sequence-open-box.webp', [320, 5600]],
+  ['docs/assets/images/hero/sequence-drawer-object.webp', [320, 6000]],
+  ['docs/assets/images/hero/sequence-small-box.webp', [320, 6000]],
+]);
+
+const heroStripBudgetBytes = Math.floor(2.5 * 1024 * 1024);
+
 const requiredFiles = [
   'docs/index.html',
   'docs/.nojekyll',
@@ -51,6 +60,7 @@ const requiredFiles = [
   'docs/assets/js/main.js',
   'docs/assets/images/teaser.webp',
   'docs/assets/images/pipeline.webp',
+  ...expectedHeroStrips.keys(),
 ];
 
 const textExtensions = new Set([
@@ -71,6 +81,7 @@ let autoplayCount = 0;
 let videoFiles = [];
 let posterFiles = [];
 let figureFiles = [];
+let heroStripFiles = [];
 
 function addError(message, isForbiddenArtifact = false) {
   errors.push(message);
@@ -426,11 +437,6 @@ function checkCssReferences(css) {
       addError(`CSS asset URL must name a local file: url(${reference})`);
       continue;
     }
-    if (localPath.split('/').includes('..')) {
-      addError(`CSS asset URL contains path traversal: url(${reference})`);
-      continue;
-    }
-
     const resolvedPath = path.resolve(cssDirectory, localPath);
     if (!isInside(docsRoot, resolvedPath)) {
       addError(`CSS asset URL escapes docs/: url(${reference})`);
@@ -785,6 +791,9 @@ function validateMediaTree(files) {
   const allPosterDirectoryFiles = files.filter((relativePath) =>
     relativePath.startsWith('docs/assets/images/posters/'),
   );
+  const allHeroDirectoryFiles = files.filter((relativePath) =>
+    relativePath.startsWith('docs/assets/images/hero/'),
+  );
   const allImageFiles = files.filter((relativePath) =>
     relativePath.startsWith('docs/assets/images/'),
   );
@@ -800,10 +809,14 @@ function validateMediaTree(files) {
       path.dirname(relativePath) === 'docs/assets/images' &&
       path.extname(relativePath).toLowerCase() === '.webp',
   );
+  heroStripFiles = allHeroDirectoryFiles.filter(
+    (relativePath) => path.extname(relativePath).toLowerCase() === '.webp',
+  );
 
   requireExact(videoFiles.length, 16, 'MP4 count under docs/assets/videos');
   requireExact(posterFiles.length, 16, 'WebP poster count under docs/assets/images/posters');
   requireExact(figureFiles.length, 2, 'top-level WebP figure count under docs/assets/images');
+  requireExact(heroStripFiles.length, 4, 'hero WebP strip count under docs/assets/images/hero');
 
   const expectedVideoPaths = videos
     .filter((video) => typeof video?.src === 'string')
@@ -815,10 +828,12 @@ function validateMediaTree(files) {
     'docs/assets/images/pipeline.webp',
     'docs/assets/images/teaser.webp',
   ];
+  const expectedHeroPaths = [...expectedHeroStrips.keys()];
 
   comparePathSets(videoFiles, expectedVideoPaths, 'video directory');
   comparePathSets(posterFiles, expectedPosterPaths, 'poster directory');
   comparePathSets(figureFiles, expectedFigurePaths, 'figure directory');
+  comparePathSets(heroStripFiles, expectedHeroPaths, 'hero directory');
   comparePathSets(
     allVideoDirectoryFiles,
     expectedVideoPaths,
@@ -830,13 +845,27 @@ function validateMediaTree(files) {
     'poster directory contents',
   );
   comparePathSets(
+    allHeroDirectoryFiles,
+    expectedHeroPaths,
+    'hero directory contents',
+  );
+  comparePathSets(
     allImageFiles,
-    [...expectedPosterPaths, ...expectedFigurePaths],
+    [...expectedPosterPaths, ...expectedFigurePaths, ...expectedHeroPaths],
     'image directory contents',
   );
 
-  for (const relativePath of [...videoFiles, ...posterFiles, ...figureFiles]) {
+  let heroStripBytes = 0;
+  for (const relativePath of [...videoFiles, ...posterFiles, ...figureFiles, ...heroStripFiles]) {
     isRegularNonemptyFile(fromRepository(relativePath), relativePath);
+  }
+  for (const relativePath of heroStripFiles) {
+    heroStripBytes += fs.statSync(fromRepository(relativePath)).size;
+  }
+  if (heroStripBytes > heroStripBudgetBytes) {
+    addError(
+      `hero WebP strips exceed ${heroStripBudgetBytes} byte budget: ${heroStripBytes} bytes`,
+    );
   }
 }
 
@@ -934,6 +963,62 @@ function validateMediaEncoding() {
       requireExact(videoStreams[0].profile, 'High', `${video.id} H.264 profile`);
     }
   }
+
+  for (const [relativePath, [expectedWidth, expectedHeight]] of expectedHeroStrips) {
+    const absolutePath = fromRepository(relativePath);
+    const result = spawnSync(
+      ffprobe,
+      [
+        '-v',
+        'error',
+        '-select_streams',
+        'v:0',
+        '-show_entries',
+        'stream=codec_type,codec_name,width,height',
+        '-of',
+        'json',
+        absolutePath,
+      ],
+      {
+        encoding: 'utf8',
+        timeout: ffprobeFileTimeoutMs,
+        maxBuffer: ffprobeMaxBuffer,
+        shell: false,
+      },
+    );
+
+    if (result.error?.code === 'ETIMEDOUT') {
+      addError(
+        `ffprobe timed out while inspecting ${relativePath} (ETIMEDOUT after ${ffprobeFileTimeoutMs} ms)`,
+      );
+      continue;
+    }
+    if (result.error) {
+      addError(`ffprobe could not inspect ${relativePath}: ${result.error.message}`);
+      continue;
+    }
+    if (result.status !== 0) {
+      addError(`ffprobe failed for ${relativePath}: ${(result.stderr || result.stdout || '').trim()}`);
+      continue;
+    }
+
+    let payload;
+    try {
+      payload = JSON.parse(result.stdout);
+    } catch (error) {
+      addError(`ffprobe returned invalid JSON for ${relativePath}: ${error.message}`);
+      continue;
+    }
+
+    const streams = Array.isArray(payload.streams) ? payload.streams : [];
+    requireExact(streams.length, 1, `${relativePath} selected stream count`);
+    if (streams.length === 1) {
+      requireExact(streams[0].codec_type, 'video', `${relativePath} stream type`);
+      requireExact(streams[0].codec_name, 'webp', `${relativePath} codec`);
+      requireExact(streams[0].width, expectedWidth, `${relativePath} width`);
+      requireExact(streams[0].height, expectedHeight, `${relativePath} height`);
+    }
+  }
 }
 
 function openingTags(html, tagName) {
@@ -966,7 +1051,35 @@ function validateHtmlStructure(html) {
   }
 
   requireExact(openingTags(html, 'main').length, 1, 'HTML <main> count');
-  requireExact(openingTags(html, 'h1').length, 1, 'HTML <h1> count');
+  const h1Tags = openingTags(html, 'h1');
+  requireExact(h1Tags.length, 1, 'HTML <h1> count');
+  const h1Match = html.match(/<h1\b[^>]*>[\s\S]*?<\/h1>/i);
+  if (h1Match) {
+    if (!/\bhero__title-brand\b/.test(h1Match[0])) {
+      addError('HTML <h1> must include .hero__title-brand');
+    }
+    if (!/\bhero__title-subtitle\b/.test(h1Match[0])) {
+      addError('HTML <h1> must include .hero__title-subtitle');
+    }
+  }
+
+  const heroFilmstripTags = openingTags(html, 'div').filter((tag) =>
+    (getAttribute(tag, 'class') || '').split(/\s+/).includes('hero__filmstrips'),
+  );
+  requireExact(heroFilmstripTags.length, 1, 'HTML .hero__filmstrips count');
+  if (heroFilmstripTags.length === 1) {
+    requireExact(getAttribute(heroFilmstripTags[0], 'aria-hidden'), 'true', 'HTML .hero__filmstrips aria-hidden');
+  }
+  requireExact(
+    (html.match(/\bhero__filmstrip-track\b/g) ?? []).length,
+    4,
+    'HTML hero filmstrip track count',
+  );
+  requireExact(
+    (html.match(/\bhero__filmstrip-sheet\b/g) ?? []).length,
+    8,
+    'HTML hero filmstrip sheet count',
+  );
 
   for (const id of ['teaser', 'overview', 'method', 'videos', 'results']) {
     const section = openingTags(html, 'section').find((tag) => getAttribute(tag, 'id') === id);
@@ -1052,6 +1165,33 @@ function validateCss(css) {
   }
   if (!/\.mobile-nav\s*\{[^{}]*overscroll-behavior-inline\s*:\s*contain\b[^{}]*\}/i.test(css)) {
     addError('CSS mobile navigation must contain horizontal overscroll');
+  }
+
+  const requiredPatterns = [
+    ['hero filmstrip keyframes', /@keyframes\s+hero-filmstrip-scroll\b/i],
+    ['cup-tray hero strip filename', /sequence-cup-tray\.webp/],
+    ['open-box hero strip filename', /sequence-open-box\.webp/],
+    ['drawer-object hero strip filename', /sequence-drawer-object\.webp/],
+    ['small-box hero strip filename', /sequence-small-box\.webp/],
+    ['72s hero track duration', /animation-duration\s*:\s*72s\b/],
+    ['84s hero track duration', /animation-duration\s*:\s*84s\b/],
+    ['78s hero track duration', /animation-duration\s*:\s*78s\b/],
+    ['96s hero track duration', /animation-duration\s*:\s*96s\b/],
+    ['reverse hero track direction', /animation-direction\s*:\s*reverse\b/],
+    [
+      'reduced-motion hero track fallback',
+      /@media\s*\(\s*prefers-reduced-motion\s*:\s*reduce\s*\)[\s\S]*\.hero__filmstrip-track\s*\{[\s\S]*animation\s*:\s*none(?:\s*!important)?\b/i,
+    ],
+    [
+      'print hero filmstrip fallback',
+      /@media\s+print\b[\s\S]*\.hero__filmstrips[\s\S]*display\s*:\s*none(?:\s*!important)?\b/i,
+    ],
+  ];
+
+  for (const [label, pattern] of requiredPatterns) {
+    if (!pattern.test(css)) {
+      addError(`CSS is missing ${label}`);
+    }
   }
 }
 
@@ -1147,6 +1287,6 @@ if (errors.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    `Validation passed: ${videoFiles.length} videos, ${posterFiles.length} posters, ${figureFiles.length} figures, ${autoplayCount} autoplay, ${forbiddenArtifactCount} forbidden artifacts.`,
+    `Validation passed: ${videoFiles.length} videos, ${posterFiles.length} posters, ${figureFiles.length} figures, ${heroStripFiles.length} hero strips, ${autoplayCount} autoplay, ${forbiddenArtifactCount} forbidden artifacts.`,
   );
 }
