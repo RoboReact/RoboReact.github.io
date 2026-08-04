@@ -1,5 +1,7 @@
 # RoboReact Cinematic Hero Filmstrips Design
 
+> This planning artifact intentionally lives outside `docs/`, the GitHub Pages publish root.
+
 ## Status
 
 Approved visual direction: option C, the cinematic dark overlay.
