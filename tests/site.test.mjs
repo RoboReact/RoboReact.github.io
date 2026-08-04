@@ -21,18 +21,26 @@ const expectedHeroFilmstripAssets = [
   {
     modifier: 'cup-tray',
     publicPath: './assets/images/hero/sequence-cup-tray.webp',
+    duration: '72s',
+    direction: 'normal',
   },
   {
     modifier: 'open-box',
     publicPath: './assets/images/hero/sequence-open-box.webp',
+    duration: '84s',
+    direction: 'reverse',
   },
   {
     modifier: 'drawer-object',
     publicPath: './assets/images/hero/sequence-drawer-object.webp',
+    duration: '78s',
+    direction: 'normal',
   },
   {
     modifier: 'small-box',
     publicPath: './assets/images/hero/sequence-small-box.webp',
+    duration: '96s',
+    direction: 'reverse',
   },
 ];
 
@@ -187,30 +195,68 @@ function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-function getElementsByClass(source, className) {
+function getClassTokens(tag) {
+  return (getAttribute(tag, 'class') ?? '').split(/\s+/).filter(Boolean);
+}
+
+function hasClass(tag, className) {
+  return getClassTokens(tag).includes(className);
+}
+
+function getSingleElementByTag(source, tagName, label) {
+  const elementPattern = new RegExp(`<${tagName}\\b[^>]*>([\\s\\S]*?)<\\/${tagName}>`, 'gi');
+  const elements = Array.from(source.matchAll(elementPattern), (match) => ({
+    innerHtml: match[1],
+  }));
+
+  assert.equal(elements.length, 1, `${label} must include exactly one <${tagName}> element`);
+  return elements[0];
+}
+
+function getElementsByTagAndClass(source, tagName, className) {
+  const elementPattern = new RegExp(`<${tagName}\\b[^>]*>([\\s\\S]*?)<\\/${tagName}>`, 'gi');
   const elements = [];
-  const elementPattern = /<([a-z][\w:-]*)\b[^>]*>[\s\S]*?<\/\1>/gi;
 
   for (const match of source.matchAll(elementPattern)) {
     const openingTag = match[0].match(/^<[^>]+>/)?.[0] ?? '';
-    const classes = (getAttribute(openingTag, 'class') ?? '').split(/\s+/);
-    if (classes.includes(className)) {
-      elements.push(match[0]);
+    if (hasClass(openingTag, className)) {
+      elements.push({
+        openingTag,
+        innerHtml: match[1],
+        index: match.index,
+      });
     }
   }
 
   return elements;
 }
 
-function countClassOccurrences(source, className) {
-  const elementPattern = /<[a-z][\w:-]*\b[^>]*>/gi;
-  let count = 0;
+function getOpeningTagsByClass(source, className) {
+  const tagPattern = /<[a-z][\w:-]*\b[^>]*>/gi;
+  const tags = [];
 
-  for (const match of source.matchAll(elementPattern)) {
-    const classes = (getAttribute(match[0], 'class') ?? '').split(/\s+/);
-    count += classes.filter((classToken) => classToken === className).length;
+  for (const match of source.matchAll(tagPattern)) {
+    if (hasClass(match[0], className)) {
+      tags.push({ tag: match[0], index: match.index });
+    }
   }
 
+  return tags;
+}
+
+function countClassOccurrences(source, className) {
+  return getOpeningTagsByClass(source, className).length;
+}
+
+function countTagClassOccurrences(source, tagName, className) {
+  const tagPattern = new RegExp(`<${tagName}\\b[^>]*>`, 'gi');
+  let count = 0;
+
+  for (const match of source.matchAll(tagPattern)) {
+    if (hasClass(match[0], className)) {
+      count += 1;
+    }
+  }
   return count;
 }
 
@@ -218,19 +264,158 @@ function assertSourceMatch(source, pattern, message) {
   assert.ok(pattern.test(source), message);
 }
 
-function assertVisibleClassText(source, className, expectedText) {
-  const elements = getElementsByClass(source, className);
-
-  assert.equal(elements.length, 1, `HTML must include exactly one .${className} element`);
-
-  const openingTag = elements[0].match(/^<[^>]+>/)?.[0] ?? '';
-  assert.doesNotMatch(openingTag, /\bhidden(?:\s|=|>)/i, `.${className} must not be hidden`);
+function assertNotHidden(tag, label) {
+  assert.doesNotMatch(tag, /\bhidden(?:\s|=|>)/i, `${label} must not be hidden`);
   assert.notEqual(
-    (getAttribute(openingTag, 'aria-hidden') ?? '').toLowerCase(),
+    (getAttribute(tag, 'aria-hidden') ?? '').toLowerCase(),
     'true',
-    `.${className} must not be aria-hidden`,
+    `${label} must not be aria-hidden`,
   );
-  assert.equal(normalizeMarkupText(elements[0]), expectedText, `.${className} text must match`);
+}
+
+function assertVisibleSpanText(source, className, expectedText) {
+  const elements = getElementsByTagAndClass(source, 'span', className);
+
+  assert.equal(elements.length, 1, `h1 must include exactly one .${className} span`);
+  assertNotHidden(elements[0].openingTag, `.${className}`);
+  assert.equal(
+    getClassTokens(elements[0].openingTag).includes('sr-only'),
+    false,
+    `.${className} must be visible, not sr-only`,
+  );
+  assert.equal(normalizeMarkupText(elements[0].innerHtml), expectedText, `.${className} text must match`);
+
+  return elements[0];
+}
+
+function assertAccessibleSrOnlyColon(source) {
+  const elements = getElementsByTagAndClass(source, 'span', 'sr-only');
+
+  assert.equal(elements.length, 1, 'h1 must include exactly one accessible .sr-only span');
+  assertNotHidden(elements[0].openingTag, '.sr-only');
+  assert.equal(normalizeMarkupText(elements[0].innerHtml), ':', '.sr-only text must be a colon');
+
+  return elements[0];
+}
+
+function captureHeroFilmstrips(html) {
+  const wrappers = getOpeningTagsByClass(html, 'hero__filmstrips');
+
+  assert.equal(wrappers.length, 1, 'HTML must include exactly one .hero__filmstrips wrapper');
+  assert.match(wrappers[0].tag, /^<div\b/i, '.hero__filmstrips must be a div');
+  assert.equal(getAttribute(wrappers[0].tag, 'aria-hidden'), 'true');
+
+  const followingHtml = html.slice(wrappers[0].index + wrappers[0].tag.length);
+  const followingContentFrame = getOpeningTagsByClass(followingHtml, 'content-frame')[0];
+  assert.ok(
+    followingContentFrame,
+    '.hero__filmstrips must be followed by the next .content-frame sibling',
+  );
+
+  return {
+    segment: html.slice(
+      wrappers[0].index,
+      wrappers[0].index + wrappers[0].tag.length + followingContentFrame.index,
+    ),
+  };
+}
+
+function getModifierFilmstripSegment(wrapperSegment, modifier) {
+  const className = `hero__filmstrip--${modifier}`;
+  const modifierTags = getOpeningTagsByClass(wrapperSegment, className);
+  const allModifierTags = expectedHeroFilmstripAssets
+    .flatMap((asset) => getOpeningTagsByClass(wrapperSegment, `hero__filmstrip--${asset.modifier}`))
+    .sort((left, right) => left.index - right.index);
+
+  assert.equal(modifierTags.length, 1, `HTML must include exactly one .${className} column`);
+
+  const start = modifierTags[0].index;
+  const nextModifier = allModifierTags.find((tag) => tag.index > start);
+  return wrapperSegment.slice(start, nextModifier?.index ?? wrapperSegment.length);
+}
+
+function getCssRules(css) {
+  const rulePattern = /([^{}]+)\{([^{}]*)\}/g;
+  return Array.from(css.matchAll(rulePattern), (match) => ({
+    selector: match[1].trim(),
+    body: match[2],
+  }));
+}
+
+function findCssRule(css, selectorPredicate, message) {
+  const rule = getCssRules(css).find(({ selector }) => selectorPredicate(selector));
+
+  assert.ok(rule, message);
+  return rule;
+}
+
+function findCssAtRuleBlock(css, atRulePattern, message) {
+  const match = css.match(atRulePattern);
+
+  assert.ok(match, message);
+
+  const openingBrace = css.indexOf('{', match.index + match[0].length);
+  assert.notEqual(openingBrace, -1, `${message}: missing opening brace`);
+
+  let depth = 0;
+  for (let index = openingBrace; index < css.length; index += 1) {
+    if (css[index] === '{') {
+      depth += 1;
+    } else if (css[index] === '}') {
+      depth -= 1;
+      if (depth === 0) {
+        return css.slice(openingBrace + 1, index);
+      }
+    }
+  }
+
+  assert.fail(`${message}: missing closing brace`);
+}
+
+function selectorHasClass(selector, className) {
+  return new RegExp(`\\.${escapeRegExp(className)}(?![\\w-])`).test(selector);
+}
+
+function findModifierTrackRule(css, modifier) {
+  return findCssRule(
+    css,
+    (selector) =>
+      selectorHasClass(selector, `hero__filmstrip--${modifier}`) &&
+      selectorHasClass(selector, 'hero__filmstrip-track'),
+    `CSS must define a .hero__filmstrip--${modifier} .hero__filmstrip-track rule`,
+  );
+}
+
+function assertModifierSheetBackground(css, modifier, publicPath) {
+  const basename = path.basename(publicPath);
+  const sheetRule = findCssRule(
+    css,
+    (selector) =>
+      selectorHasClass(selector, `hero__filmstrip--${modifier}`) &&
+      selectorHasClass(selector, 'hero__filmstrip-sheet'),
+    `CSS must define a modifier-specific .hero__filmstrip-sheet rule for ${modifier}`,
+  );
+
+  assertSourceMatch(
+    sheetRule.body,
+    new RegExp(`\\bbackground-image\\s*:\\s*url\\(["']?\\.\\./images/hero/${escapeRegExp(basename)}["']?\\)`),
+    `CSS .hero__filmstrip--${modifier} .hero__filmstrip-sheet must use ../images/hero/${basename}`,
+  );
+}
+
+function assertModifierTrackMotion(css, modifier, duration, direction) {
+  const trackRule = findModifierTrackRule(css, modifier);
+
+  assertSourceMatch(
+    trackRule.body,
+    new RegExp(`\\banimation(?:-duration)?\\s*:[^;]*\\b${escapeRegExp(duration)}\\b`),
+    `CSS .hero__filmstrip--${modifier} .hero__filmstrip-track must use ${duration}`,
+  );
+  assertSourceMatch(
+    trackRule.body,
+    new RegExp(`\\banimation(?:-direction)?\\s*:[^;]*\\b${escapeRegExp(direction)}\\b`),
+    `CSS .hero__filmstrip--${modifier} .hero__filmstrip-track must use ${direction} direction`,
+  );
 }
 
 test('required production files exist before contract assertions run', () => {
@@ -240,14 +425,21 @@ test('required production files exist before contract assertions run', () => {
 test('site exposes the two-level paper title in HTML and config', () => {
   const { html } = readRequiredFiles();
   const config = loadConfig();
-  const h1Tags = html.match(/<h1\b[^>]*>[\s\S]*?<\/h1>/gi) ?? [];
+  const h1 = getSingleElementByTag(html, 'h1', 'HTML');
+  const brand = assertVisibleSpanText(h1.innerHtml, 'hero__title-brand', 'RoboReact');
+  const colon = assertAccessibleSrOnlyColon(h1.innerHtml);
+  const subtitle = assertVisibleSpanText(
+    h1.innerHtml,
+    'hero__title-subtitle',
+    expectedHeroSubtitle,
+  );
 
-  assert.equal(h1Tags.length, 1, 'HTML must include exactly one h1');
-  assert.equal(normalizeMarkupText(h1Tags[0]), expectedTitle);
+  assert.ok(
+    brand.index < colon.index && colon.index < subtitle.index,
+    'h1 title spans must appear in order: brand, accessible colon, subtitle',
+  );
+  assert.equal(normalizeMarkupText(h1.innerHtml), expectedTitle);
   assert.equal(config.title, expectedTitle);
-  assertVisibleClassText(html, 'hero__title-brand', 'RoboReact');
-  assertVisibleClassText(html, 'hero__title-subtitle', expectedHeroSubtitle);
-  assert.match(html, new RegExp(escapeRegExp(expectedHeroSubtitle)));
 });
 
 test('video configuration has exactly 16 unique public videos', () => {
@@ -340,20 +532,16 @@ test('site publishes a local SVG favicon from the document head', () => {
 
 test('hero publishes four decorative local filmstrips with seamless sheet pairs', () => {
   const { html, css } = readRequiredFiles();
-  const filmstrips = getElementsByClass(html, 'hero__filmstrips');
+  const { segment: filmstripMarkup } = captureHeroFilmstrips(html);
 
-  assert.equal(filmstrips.length, 1, 'HTML must include exactly one .hero__filmstrips wrapper');
-
-  const openingTag = filmstrips[0].match(/^<div\b[^>]*>/i)?.[0] ?? '';
-  assert.notEqual(openingTag, '', '.hero__filmstrips must be a div');
-  assert.equal(getAttribute(openingTag, 'aria-hidden'), 'true');
+  assert.doesNotMatch(filmstripMarkup, /<img\b/i, '.hero__filmstrips must stay decorative without img elements');
   assert.equal(
-    countClassOccurrences(html, 'hero__filmstrip-track'),
+    countClassOccurrences(filmstripMarkup, 'hero__filmstrip-track'),
     4,
     'HTML must include exactly four hero filmstrip tracks',
   );
   assert.equal(
-    countClassOccurrences(html, 'hero__filmstrip-sheet'),
+    countClassOccurrences(filmstripMarkup, 'hero__filmstrip-sheet'),
     8,
     'HTML must include exactly eight hero filmstrip sheets',
   );
@@ -361,18 +549,21 @@ test('hero publishes four decorative local filmstrips with seamless sheet pairs'
   let combinedBytes = 0;
 
   for (const { modifier, publicPath } of expectedHeroFilmstripAssets) {
-    assert.match(
-      html,
-      new RegExp(`\\bhero__filmstrip--${escapeRegExp(modifier)}\\b`),
-      `HTML must include hero__filmstrip--${modifier}`,
+    const modifierMarkup = getModifierFilmstripSegment(filmstripMarkup, modifier);
+
+    assert.equal(
+      countClassOccurrences(modifierMarkup, 'hero__filmstrip-track'),
+      1,
+      `.hero__filmstrip--${modifier} must contain exactly one nested track`,
+    );
+    assert.equal(
+      countTagClassOccurrences(modifierMarkup, 'span', 'hero__filmstrip-sheet'),
+      2,
+      `.hero__filmstrip--${modifier} must contain exactly two sheet spans`,
     );
     assertLocalDocsFile(publicPath, `hero ${modifier} filmstrip`);
     combinedBytes += fs.statSync(path.resolve(docsRoot, publicPath)).size;
-    assertSourceMatch(
-      css,
-      new RegExp(`url\\(["']?\\.\\./images/hero/${escapeRegExp(path.basename(publicPath))}["']?\\)`),
-      `CSS must reference ../images/hero/${path.basename(publicPath)}`,
-    );
+    assertModifierSheetBackground(css, modifier, publicPath);
   }
 
   assert.ok(
@@ -385,17 +576,42 @@ test('hero filmstrip motion is slow, staggered, reduced-motion safe, and printab
   const { css } = readRequiredFiles();
   const generatorPath = absolutePath('scripts/prepare-hero-filmstrips.sh');
 
-  for (const duration of ['72s', '84s', '78s', '96s']) {
-    assertSourceMatch(css, new RegExp(`\\b${duration}\\b`), `CSS must include ${duration} duration`);
+  for (const { modifier, duration, direction } of expectedHeroFilmstripAssets) {
+    assertModifierTrackMotion(css, modifier, duration, direction);
   }
 
-  assertSourceMatch(css, /@keyframes\s+hero-filmstrip-scroll\b/);
-  assertSourceMatch(css, /\banimation-direction\s*:\s*reverse\b|animation\s*:[^;]*\breverse\b/);
-  assertSourceMatch(css, /prefers-reduced-motion/);
   assertSourceMatch(
     css,
-    /@media\s+print\s*\{[\s\S]*?[^{}]*\.hero__filmstrips[^{}]*\{[^{}]*\bdisplay\s*:\s*none\b[^{}]*\}/,
-    'print CSS must hide .hero__filmstrips with display: none',
+    /@keyframes\s+hero-filmstrip-scroll\b/,
+    'CSS must define @keyframes hero-filmstrip-scroll for filmstrip motion',
+  );
+
+  const reducedMotionCss = findCssAtRuleBlock(
+    css,
+    /@media\s*\(\s*prefers-reduced-motion\s*:\s*reduce\s*\)/,
+    'CSS must define @media (prefers-reduced-motion: reduce)',
+  );
+  const reducedMotionTrackRule = findCssRule(
+    reducedMotionCss,
+    (selector) => selectorHasClass(selector, 'hero__filmstrip-track'),
+    'reduced-motion CSS must target .hero__filmstrip-track',
+  );
+  assertSourceMatch(
+    reducedMotionTrackRule.body,
+    /\banimation\s*:\s*none(?:\s*!important)?\b/,
+    'reduced-motion .hero__filmstrip-track rule must set animation: none',
+  );
+
+  const printCss = findCssAtRuleBlock(css, /@media\s+print\b/, 'CSS must define @media print');
+  const printFilmstripRule = findCssRule(
+    printCss,
+    (selector) => selectorHasClass(selector, 'hero__filmstrips'),
+    'print CSS must target .hero__filmstrips',
+  );
+  assertSourceMatch(
+    printFilmstripRule.body,
+    /\bdisplay\s*:\s*none\b/,
+    'print .hero__filmstrips rule must set display: none',
   );
 
   assert.ok(
@@ -404,8 +620,16 @@ test('hero filmstrip motion is slow, staggered, reduced-motion safe, and printab
   );
 
   const generator = fs.readFileSync(generatorPath, 'utf8');
-  assert.match(generator, /^#!\/usr\/bin\/env bash\r?\n/);
-  assert.match(generator, /\bset\s+-euo\s+pipefail\b/);
+  assert.match(
+    generator,
+    /^#!\/usr\/bin\/env bash\r?\n/,
+    'scripts/prepare-hero-filmstrips.sh must use a Bash shebang',
+  );
+  assert.match(
+    generator,
+    /\bset\s+-euo\s+pipefail\b/,
+    'scripts/prepare-hero-filmstrips.sh must enable set -euo pipefail',
+  );
 
   for (const token of [
     'generated_reference_images',
@@ -415,13 +639,25 @@ test('hero filmstrip motion is slow, staggered, reduced-motion safe, and printab
     'drawer-object',
     'small-box',
   ]) {
-    assert.match(generator, new RegExp(escapeRegExp(token)), `generator must mention ${token}`);
+    assert.match(
+      generator,
+      new RegExp(escapeRegExp(token)),
+      `scripts/prepare-hero-filmstrips.sh must mention source token ${token}`,
+    );
   }
 
-  assert.match(generator, /\bffmpeg\b/);
-  assert.match(generator, /\bcwebp\b/);
-  assert.doesNotMatch(generator, /\blibwebp\b/);
-  assert.doesNotMatch(generator, /\/Users\//);
+  assert.match(generator, /\bffmpeg\b/, 'scripts/prepare-hero-filmstrips.sh must invoke ffmpeg');
+  assert.match(generator, /\bcwebp\b/, 'scripts/prepare-hero-filmstrips.sh must invoke cwebp');
+  assert.doesNotMatch(
+    generator,
+    /\blibwebp\b/,
+    'scripts/prepare-hero-filmstrips.sh must not require libwebp directly',
+  );
+  assert.doesNotMatch(
+    generator,
+    /\/Users\//,
+    'scripts/prepare-hero-filmstrips.sh must not contain local /Users/ paths',
+  );
 });
 
 test('release resource links are sanitized as HTTPS-only URLs', () => {
