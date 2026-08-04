@@ -846,6 +846,40 @@ test('headline metric describes test-time VLM access as frozen', () => {
   assert.doesNotMatch(html, /<dt>Test-time VLM access<\/dt>\s*<dd>No<\/dd>/);
 });
 
+test('teaser figure is scaled, centered, and blended into the page canvas', () => {
+  const { css } = readRequiredFiles();
+  const figureRule = findCssRule(
+    css,
+    (selector) => selector.trim() === '.paper-figure--teaser',
+    'CSS must define a scoped .paper-figure--teaser rule',
+  );
+  const imageRule = findCssRule(
+    css,
+    (selector) => selector.trim() === '.paper-figure--teaser img',
+    'CSS must define a scoped .paper-figure--teaser img rule',
+  );
+  const mobileCss = findCssAtRuleBlock(
+    css,
+    /@media\s*\(\s*max-width\s*:\s*720px\s*\)/,
+    'CSS must define the max-width: 720px responsive block',
+  );
+  const mobileFigureRule = findCssRule(
+    mobileCss,
+    (selector) => selector.trim() === '.paper-figure--teaser',
+    'mobile CSS must restore the teaser figure to full width',
+  );
+
+  assert.match(figureRule.body, /\bwidth\s*:\s*70%\s*;/);
+  assert.match(figureRule.body, /\bmargin-inline\s*:\s*auto\s*;/);
+  assert.match(figureRule.body, /\bpadding\s*:\s*0\s*;/);
+  assert.match(figureRule.body, /\bborder\s*:\s*0\s*;/);
+  assert.match(figureRule.body, /\bbackground\s*:\s*transparent\s*;/);
+  assert.match(figureRule.body, /\bbox-shadow\s*:\s*none\s*;/);
+  assert.match(imageRule.body, /\bbackground\s*:\s*transparent\s*;/);
+  assert.match(imageRule.body, /\bmix-blend-mode\s*:\s*multiply\s*;/);
+  assert.match(mobileFigureRule.body, /\bwidth\s*:\s*100%\s*;/);
+});
+
 test('main.js leaves playback speed to media files instead of forcing playbackRate', () => {
   const { main } = readRequiredFiles();
 

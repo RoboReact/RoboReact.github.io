@@ -732,6 +732,21 @@ main:focus-visible,
   object-fit: contain;
 }
 
+.paper-figure--teaser {
+  width: 70%;
+  margin-inline: auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.paper-figure--teaser img {
+  border-radius: 0;
+  background: transparent;
+  mix-blend-mode: multiply;
+}
+
 .paper-figure figcaption {
   max-width: 67rem;
   margin: 0.85rem auto 0;
@@ -1314,6 +1329,11 @@ main:focus-visible,
 
   .paper-figure {
     padding: 0.45rem;
+  }
+
+  .paper-figure--teaser {
+    width: 100%;
+    padding: 0;
   }
 
   .paper-figure figcaption {
