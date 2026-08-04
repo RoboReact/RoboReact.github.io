@@ -392,7 +392,11 @@ test('hero filmstrip motion is slow, staggered, reduced-motion safe, and printab
   assertSourceMatch(css, /@keyframes\s+hero-filmstrip-scroll\b/);
   assertSourceMatch(css, /\banimation-direction\s*:\s*reverse\b|animation\s*:[^;]*\breverse\b/);
   assertSourceMatch(css, /prefers-reduced-motion/);
-  assertSourceMatch(css, /@media\s+print[\s\S]*hero__filmstrips/);
+  assertSourceMatch(
+    css,
+    /@media\s+print\s*\{[\s\S]*?[^{}]*\.hero__filmstrips[^{}]*\{[^{}]*\bdisplay\s*:\s*none\b[^{}]*\}/,
+    'print CSS must hide .hero__filmstrips with display: none',
+  );
 
   assert.ok(
     fs.existsSync(generatorPath),
@@ -403,7 +407,14 @@ test('hero filmstrip motion is slow, staggered, reduced-motion safe, and printab
   assert.match(generator, /^#!\/usr\/bin\/env bash\r?\n/);
   assert.match(generator, /\bset\s+-euo\s+pipefail\b/);
 
-  for (const token of ['cup-tray', 'open-box', 'drawer-object', 'small-box']) {
+  for (const token of [
+    'generated_reference_images',
+    'keyframe_images',
+    'cup-tray',
+    'open-box',
+    'drawer-object',
+    'small-box',
+  ]) {
     assert.match(generator, new RegExp(escapeRegExp(token)), `generator must mention ${token}`);
   }
 
