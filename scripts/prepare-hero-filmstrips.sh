@@ -10,14 +10,37 @@ die() {
   exit 1
 }
 
+resolve_tool() {
+  local tool_name=$1
+  local override_var=$2
+  local candidate
+
+  if [[ -n "${!override_var:-}" ]]; then
+    candidate=${!override_var}
+  else
+    candidate=$(command -v "$tool_name" 2>/dev/null) || \
+      die "required tool not found: $tool_name; set $override_var=/path/to/$tool_name"
+  fi
+
+  [[ -x "$candidate" ]] || die "required tool is not executable: $candidate"
+  printf '%s\n' "$candidate"
+}
+
 if [[ "$#" -ne 1 ]]; then
   usage
   exit 2
 fi
 
-for tool in ffmpeg ffprobe cwebp; do
-  command -v "$tool" >/dev/null 2>&1 || die "required tool not found: $tool"
-done
+REQUIRED_CWEBP_VERSION=1.6.0
+
+ffmpeg_bin=$(resolve_tool ffmpeg FFMPEG_BIN)
+ffprobe_bin=$(resolve_tool ffprobe FFPROBE_BIN)
+cwebp_bin=$(resolve_tool cwebp CWEBP_BIN)
+
+cwebp_version=$("$cwebp_bin" -version 2>&1)
+cwebp_version=${cwebp_version%%$'\n'*}
+[[ "$cwebp_version" == "$REQUIRED_CWEBP_VERSION" ]] || \
+  die "cwebp version must be $REQUIRED_CWEBP_VERSION; found '$cwebp_version'. Use CWEBP_BIN=/path/to/cwebp to select the required encoder."
 
 source_root=$1
 [[ -d "$source_root" ]] || die "source material root is not a directory: $source_root"
@@ -29,9 +52,11 @@ mkdir -p "$output_dir"
 
 scratch_dir=$(mktemp -d "${TMPDIR:-/tmp}/hero-filmstrips.XXXXXX")
 cleanup() {
-  rm -rf "$scratch_dir"
+  rm -rf -- "$scratch_dir"
 }
-trap cleanup EXIT INT TERM
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 FILTER='scale=320:200:force_original_aspect_ratio=increase,crop=320:200,setsar=1'
 
@@ -79,17 +104,17 @@ render_strip() {
   done
   filter_complex+="vstack=inputs=${#inputs[@]}[out]"
 
-  ffmpeg -hide_banner -loglevel error -y \
+  "$ffmpeg_bin" -hide_banner -loglevel error -y \
     "${ffmpeg_args[@]}" \
     -filter_complex "$filter_complex" \
     -map '[out]' \
     -frames:v 1 \
     "$temp_png"
 
-  cwebp -quiet -q 62 -m 6 -metadata none "$temp_png" -o "$temp_webp"
+  "$cwebp_bin" -quiet -q 62 -m 6 -metadata none "$temp_png" -o "$temp_webp"
 
   local probe
-  probe=$(ffprobe -v error -select_streams v:0 \
+  probe=$("$ffprobe_bin" -v error -select_streams v:0 \
     -show_entries stream=codec_name,width,height \
     -of csv=p=0:s=x "$temp_webp")
   [[ "$probe" == "webpx320x${expected_height}" ]] || \

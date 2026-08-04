@@ -660,6 +660,65 @@ test('hero filmstrip motion is slow, staggered, reduced-motion safe, and printab
   );
 });
 
+test('hero generator pins its encoder and exits cleanly on signals', () => {
+  const generatorPath = absolutePath('scripts/prepare-hero-filmstrips.sh');
+
+  assert.ok(
+    fs.existsSync(generatorPath),
+    'hero generator must exist before safety contract assertions run',
+  );
+
+  const generator = fs.readFileSync(generatorPath, 'utf8');
+
+  assert.match(
+    generator,
+    /\bCWEBP_BIN\b/,
+    'hero generator must support a CWEBP_BIN executable-path override',
+  );
+  const cwebpResolverCalls =
+    generator.match(/\bcwebp_bin=\$\(resolve_tool cwebp CWEBP_BIN\)/g) ?? [];
+  assert.equal(
+    cwebpResolverCalls.length,
+    1,
+    'hero generator must resolve the cwebp binary exactly once through the shared resolver',
+  );
+  assert.match(
+    generator,
+    /\bREQUIRED_CWEBP_VERSION=1\.6\.0\b/,
+    'hero generator must document the exact cwebp version contract as 1.6.0',
+  );
+  assert.match(
+    generator,
+    /"\$cwebp_bin"\s+-quiet\b/,
+    'hero generator must invoke the resolved cwebp_bin variable for encoding',
+  );
+  assert.doesNotMatch(
+    generator,
+    /(?:^|\n)\s*cwebp\s+-quiet\b/,
+    'hero generator must not invoke bare cwebp for encoding',
+  );
+  assert.match(
+    generator,
+    /trap cleanup EXIT\b/,
+    'hero generator must register cleanup on EXIT separately',
+  );
+  assert.match(
+    generator,
+    /trap 'exit 130' INT\b/,
+    'hero generator must exit 130 on INT so EXIT cleanup still runs',
+  );
+  assert.match(
+    generator,
+    /trap 'exit 143' TERM\b/,
+    'hero generator must exit 143 on TERM so EXIT cleanup still runs',
+  );
+  assert.match(
+    generator,
+    /rm -rf -- "\$scratch_dir"/,
+    'hero generator cleanup must use rm -rf -- "$scratch_dir"',
+  );
+});
+
 test('release resource links are sanitized as HTTPS-only URLs', () => {
   const { main } = readRequiredFiles();
 
