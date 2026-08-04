@@ -13,8 +13,28 @@ const requiredFiles = {
   main: 'docs/assets/js/main.js',
 };
 
-const expectedTitle =
-  'RoboReact: Agentic Skill Distillation from Generated Egocentric Videos for Generalizable Whole-Body Manipulation';
+const expectedHeroSubtitle =
+  'Agentic Skill Distillation from Generated Egocentric Videos for Generalizable Whole-Body Manipulation';
+const expectedTitle = `RoboReact: ${expectedHeroSubtitle}`;
+
+const expectedHeroFilmstripAssets = [
+  {
+    modifier: 'cup-tray',
+    publicPath: './assets/images/hero/sequence-cup-tray.webp',
+  },
+  {
+    modifier: 'open-box',
+    publicPath: './assets/images/hero/sequence-open-box.webp',
+  },
+  {
+    modifier: 'drawer-object',
+    publicPath: './assets/images/hero/sequence-drawer-object.webp',
+  },
+  {
+    modifier: 'small-box',
+    publicPath: './assets/images/hero/sequence-small-box.webp',
+  },
+];
 
 const expectedTaskSuccessRates = {
   handOver: 85,
@@ -153,16 +173,81 @@ function getAttribute(tag, attributeName) {
   return unquotedMatch?.[1];
 }
 
+function normalizeMarkupText(markup) {
+  return markup
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/\s+/g, ' ')
+    .replace(/\s*:\s*/g, ': ')
+    .trim();
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function getElementsByClass(source, className) {
+  const elements = [];
+  const elementPattern = /<([a-z][\w:-]*)\b[^>]*>[\s\S]*?<\/\1>/gi;
+
+  for (const match of source.matchAll(elementPattern)) {
+    const openingTag = match[0].match(/^<[^>]+>/)?.[0] ?? '';
+    const classes = (getAttribute(openingTag, 'class') ?? '').split(/\s+/);
+    if (classes.includes(className)) {
+      elements.push(match[0]);
+    }
+  }
+
+  return elements;
+}
+
+function countClassOccurrences(source, className) {
+  const elementPattern = /<[a-z][\w:-]*\b[^>]*>/gi;
+  let count = 0;
+
+  for (const match of source.matchAll(elementPattern)) {
+    const classes = (getAttribute(match[0], 'class') ?? '').split(/\s+/);
+    count += classes.filter((classToken) => classToken === className).length;
+  }
+
+  return count;
+}
+
+function assertSourceMatch(source, pattern, message) {
+  assert.ok(pattern.test(source), message);
+}
+
+function assertVisibleClassText(source, className, expectedText) {
+  const elements = getElementsByClass(source, className);
+
+  assert.equal(elements.length, 1, `HTML must include exactly one .${className} element`);
+
+  const openingTag = elements[0].match(/^<[^>]+>/)?.[0] ?? '';
+  assert.doesNotMatch(openingTag, /\bhidden(?:\s|=|>)/i, `.${className} must not be hidden`);
+  assert.notEqual(
+    (getAttribute(openingTag, 'aria-hidden') ?? '').toLowerCase(),
+    'true',
+    `.${className} must not be aria-hidden`,
+  );
+  assert.equal(normalizeMarkupText(elements[0]), expectedText, `.${className} text must match`);
+}
+
 test('required production files exist before contract assertions run', () => {
   assertRequiredFilesExist();
 });
 
-test('site exposes the exact paper title in HTML and config', () => {
+test('site exposes the two-level paper title in HTML and config', () => {
   const { html } = readRequiredFiles();
   const config = loadConfig();
+  const h1Tags = html.match(/<h1\b[^>]*>[\s\S]*?<\/h1>/gi) ?? [];
 
-  assert.match(html, new RegExp(expectedTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  assert.equal(h1Tags.length, 1, 'HTML must include exactly one h1');
+  assert.equal(normalizeMarkupText(h1Tags[0]), expectedTitle);
   assert.equal(config.title, expectedTitle);
+  assertVisibleClassText(html, 'hero__title-brand', 'RoboReact');
+  assertVisibleClassText(html, 'hero__title-subtitle', expectedHeroSubtitle);
+  assert.match(html, new RegExp(escapeRegExp(expectedHeroSubtitle)));
 });
 
 test('video configuration has exactly 16 unique public videos', () => {
@@ -251,6 +336,81 @@ test('site publishes a local SVG favicon from the document head', () => {
   assert.equal(iconLinks.length, 1, 'HTML must include exactly one rel="icon" link');
   assert.equal(getAttribute(iconLinks[0], 'href'), './favicon.svg');
   assert.equal(getAttribute(iconLinks[0], 'type'), 'image/svg+xml');
+});
+
+test('hero publishes four decorative local filmstrips with seamless sheet pairs', () => {
+  const { html, css } = readRequiredFiles();
+  const filmstrips = getElementsByClass(html, 'hero__filmstrips');
+
+  assert.equal(filmstrips.length, 1, 'HTML must include exactly one .hero__filmstrips wrapper');
+
+  const openingTag = filmstrips[0].match(/^<div\b[^>]*>/i)?.[0] ?? '';
+  assert.notEqual(openingTag, '', '.hero__filmstrips must be a div');
+  assert.equal(getAttribute(openingTag, 'aria-hidden'), 'true');
+  assert.equal(
+    countClassOccurrences(html, 'hero__filmstrip-track'),
+    4,
+    'HTML must include exactly four hero filmstrip tracks',
+  );
+  assert.equal(
+    countClassOccurrences(html, 'hero__filmstrip-sheet'),
+    8,
+    'HTML must include exactly eight hero filmstrip sheets',
+  );
+
+  let combinedBytes = 0;
+
+  for (const { modifier, publicPath } of expectedHeroFilmstripAssets) {
+    assert.match(
+      html,
+      new RegExp(`\\bhero__filmstrip--${escapeRegExp(modifier)}\\b`),
+      `HTML must include hero__filmstrip--${modifier}`,
+    );
+    assertLocalDocsFile(publicPath, `hero ${modifier} filmstrip`);
+    combinedBytes += fs.statSync(path.resolve(docsRoot, publicPath)).size;
+    assertSourceMatch(
+      css,
+      new RegExp(`url\\(["']?\\.\\./images/hero/${escapeRegExp(path.basename(publicPath))}["']?\\)`),
+      `CSS must reference ../images/hero/${path.basename(publicPath)}`,
+    );
+  }
+
+  assert.ok(
+    combinedBytes <= 2.5 * 1024 * 1024,
+    'combined hero filmstrip assets must stay at or below 2.5 MiB',
+  );
+});
+
+test('hero filmstrip motion is slow, staggered, reduced-motion safe, and printable', () => {
+  const { css } = readRequiredFiles();
+  const generatorPath = absolutePath('scripts/prepare-hero-filmstrips.sh');
+
+  for (const duration of ['72s', '84s', '78s', '96s']) {
+    assertSourceMatch(css, new RegExp(`\\b${duration}\\b`), `CSS must include ${duration} duration`);
+  }
+
+  assertSourceMatch(css, /@keyframes\s+hero-filmstrip-scroll\b/);
+  assertSourceMatch(css, /\banimation-direction\s*:\s*reverse\b|animation\s*:[^;]*\breverse\b/);
+  assertSourceMatch(css, /prefers-reduced-motion/);
+  assertSourceMatch(css, /@media\s+print[\s\S]*hero__filmstrips/);
+
+  assert.ok(
+    fs.existsSync(generatorPath),
+    'scripts/prepare-hero-filmstrips.sh must exist as the reproducible generator',
+  );
+
+  const generator = fs.readFileSync(generatorPath, 'utf8');
+  assert.match(generator, /^#!\/usr\/bin\/env bash\r?\n/);
+  assert.match(generator, /\bset\s+-euo\s+pipefail\b/);
+
+  for (const token of ['cup-tray', 'open-box', 'drawer-object', 'small-box']) {
+    assert.match(generator, new RegExp(escapeRegExp(token)), `generator must mention ${token}`);
+  }
+
+  assert.match(generator, /\bffmpeg\b/);
+  assert.match(generator, /\bcwebp\b/);
+  assert.doesNotMatch(generator, /\blibwebp\b/);
+  assert.doesNotMatch(generator, /\/Users\//);
 });
 
 test('release resource links are sanitized as HTTPS-only URLs', () => {
