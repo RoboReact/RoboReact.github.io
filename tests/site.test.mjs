@@ -418,6 +418,13 @@ function assertModifierTrackMotion(css, modifier, duration, direction) {
   );
 }
 
+function rgbaPattern(red, green, blue, alpha, stop) {
+  return new RegExp(
+    `rgba\\(\\s*${red}\\s*,\\s*${green}\\s*,\\s*${blue}\\s*,\\s*0?\\.${alpha}\\s*\\)\\s*${stop}`,
+    'i',
+  );
+}
+
 test('required production files exist before contract assertions run', () => {
   assertRequiredFilesExist();
 });
@@ -658,6 +665,30 @@ test('hero filmstrip motion is slow, staggered, reduced-motion safe, and printab
     /\/Users\//,
     'scripts/prepare-hero-filmstrips.sh must not contain local /Users/ paths',
   );
+});
+
+test('hero uses the approved cinematic palette', () => {
+  const { css } = readRequiredFiles();
+
+  assert.match(css, /#151310\b/i, 'hero CSS must use the approved dark base #151310');
+  assert.match(css, /#fffaf3\b/i, 'hero CSS must use the approved primary text #fffaf3');
+  assert.match(css, /#e8e1d8\b/i, 'hero CSS must use the approved support text #e8e1d8');
+  assert.match(
+    css,
+    rgbaPattern(15, 13, 11, 62, '0%'),
+    'hero veil must start with rgba(15,13,11,.62) at 0%',
+  );
+  assert.match(
+    css,
+    rgbaPattern(15, 13, 11, 68, '58%'),
+    'hero veil must include rgba(15,13,11,.68) at 58%',
+  );
+  assert.match(
+    css,
+    rgbaPattern(15, 13, 11, 76, '100%'),
+    'hero veil must end with rgba(15,13,11,.76) at 100%',
+  );
+  assert.doesNotMatch(css, /#fff8ef\b/i, 'hero CSS must not use obsolete #fff8ef');
 });
 
 test('hero generator pins its encoder and exits cleanly on signals', () => {

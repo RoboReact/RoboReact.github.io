@@ -266,7 +266,7 @@ main:focus-visible,
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: var(--radius-lg);
-  color: #fff8ef;
+  color: #fffaf3;
   background: #151310;
   box-shadow: 0 28px 76px rgba(21, 19, 16, 0.32);
 }
@@ -419,7 +419,7 @@ main:focus-visible,
 
 .hero__title-brand {
   display: block;
-  color: #fff8ef;
+  color: #fffaf3;
   font-size: clamp(3rem, 6vw, 5.25rem);
   font-weight: 760;
   letter-spacing: 0;
@@ -430,7 +430,7 @@ main:focus-visible,
   display: block;
   max-width: 64rem;
   margin: 0.9rem auto 0;
-  color: #fff8ef;
+  color: #fffaf3;
   font-size: clamp(1.2rem, 2.2vw, 1.9rem);
   font-weight: 560;
   letter-spacing: 0;
@@ -480,7 +480,7 @@ main:focus-visible,
 .hero .fact-tags li,
 .hero .metric-card {
   border-color: rgba(255, 255, 255, 0.22);
-  color: #fff8ef;
+  color: #fffaf3;
   background: rgba(20,18,16,.54);
   -webkit-backdrop-filter: blur(14px);
   backdrop-filter: blur(14px);
@@ -505,7 +505,7 @@ main:focus-visible,
 .hero .resource-links a,
 .hero .resource-links span,
 .hero .metric-card dd {
-  color: #fff8ef;
+  color: #fffaf3;
 }
 
 .hero .release-metadata [data-release-affiliations],
@@ -1418,7 +1418,7 @@ main:focus-visible,
 
   .hero .resource-links a:hover {
     border-color: rgba(242, 174, 134, 0.72);
-    color: #fff8ef;
+    color: #fffaf3;
     background: rgba(20,18,16,.68);
   }
 
