@@ -51,7 +51,7 @@ Reference toolchain for the committed public media assets:
 
 The media script regenerates the public videos, poster frames, and paper figures under `docs/assets/`. The hero script derives four WebP filmstrips under `docs/assets/images/hero/` by interleaving every generated-reference frame with its matching robot keyframe. The original source PNGs remain private, unpublished, and outside `docs/`. The private manuscript/source-media bundle is intentionally excluded from the publish tree, and the source PDF must never be published.
 
-Hero filmstrip generation requires cwebp 1.6.0. Set `CWEBP_BIN` when `PATH` contains multiple cwebp copies; `FFMPEG_BIN` and `FFPROBE_BIN` can likewise select specific FFmpeg executables for the media scripts.
+Hero filmstrip generation requires cwebp 1.6.0. For `scripts/prepare-hero-filmstrips.sh`, `CWEBP_BIN` selects cwebp when `PATH` contains multiple copies, and `FFMPEG_BIN`/`FFPROBE_BIN` select that same hero generator's FFmpeg executables.
 
 Use the same versions and builds for the closest reproducibility. Exact bytes may differ across builds/platforms and tool builds, so the validator verifies publish contract details such as counts, mappings, codecs, and the public boundary rather than hashes.
 
