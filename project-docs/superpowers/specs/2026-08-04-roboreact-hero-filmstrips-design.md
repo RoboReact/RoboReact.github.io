@@ -31,7 +31,7 @@ The existing duplicate `hero__wordmark` is removed. The hero keeps one semantic 
 2. An accessible, visually hidden colon so the heading's normalized text remains the exact paper title.
 3. `.hero__title-subtitle`: visible `Agentic Skill Distillation from Generated Egocentric Videos for Generalizable Whole-Body Manipulation` as the smaller second semantic line.
 
-The brand line uses the local system stack `"Avenir Next", Avenir, "Helvetica Neue", var(--font-sans)` with a medium-heavy weight and restrained negative tracking. The subtitle uses the same stack at a lighter weight. No web-font request is introduced.
+The brand line uses the local system stack `"Avenir Next", Avenir, "Helvetica Neue", var(--font-sans)` with a medium-heavy weight and neutral tracking. The subtitle uses the same stack at a lighter weight. No web-font request is introduced.
 
 Desktop values:
 
@@ -73,7 +73,7 @@ Each matched input frame is center-cropped and scaled to a common `320 × 200` t
 - 15-pair strips: `320 × 6000`.
 - 14-pair strip: `320 × 5600`.
 
-`scripts/prepare-hero-filmstrips.sh` accepts the source-material root as its only argument and uses the existing FFmpeg toolchain to regenerate the strips. It must not contain an absolute local path. The original PNGs remain outside `docs/` and outside the commit.
+`scripts/prepare-hero-filmstrips.sh` accepts the source-material root as its only argument. It uses FFmpeg to assemble a lossless temporary PNG and the repository's existing `cwebp` toolchain to encode each final strip. It must not contain an absolute local path. The original PNGs remain outside `docs/` and outside the commit.
 
 The combined four-strip budget is 2.5 MiB or less. Validation rejects a missing, extra, empty, oversized, or incorrectly dimensioned strip.
 
