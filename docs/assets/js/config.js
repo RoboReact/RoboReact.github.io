@@ -83,7 +83,7 @@ globalThis.ROBOREACT_CONFIG = JSON.parse(String.raw`
     "bibtex": null,
     "resources": {
       "paper": null,
-      "arxiv": null,
+      "arxiv": "https://arxiv.org/pdf/2608.03387",
       "code": null,
       "dataset": null,
       "supplementary": null

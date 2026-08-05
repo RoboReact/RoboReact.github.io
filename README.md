@@ -57,7 +57,7 @@ Use the same versions and builds for the closest reproducibility. Exact bytes ma
 
 ## Release Metadata
 
-Release metadata lives in `docs/assets/js/config.js`. Authors and their numbered affiliations are populated there and rendered beneath the paper title. The three affiliation logos are local files under `docs/assets/images/affiliations/`; contact remains `null`, so the public page does not render email addresses. Venue, resources, and BibTeX stay hidden until those fields are populated.
+Release metadata lives in `docs/assets/js/config.js`. Authors and their numbered affiliations are populated there and rendered beneath the paper title. The three affiliation logos are local files under `docs/assets/images/affiliations/`; contact remains `null`, so the public page does not render email addresses. The arXiv resource links directly to the published PDF; venue, the remaining resources, and BibTeX stay hidden until those fields are populated.
 
 Future resource URLs must be HTTPS. The page script and validator reject non-HTTPS release resource URLs.
 

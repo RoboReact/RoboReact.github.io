@@ -547,7 +547,11 @@ test('release metadata publishes the author list and local affiliation logos wit
   assert.equal(config.release.bibtex, null, 'release BibTeX must be null');
   assert.ok(config.release.resources, 'config.release.resources must exist');
   assert.equal(config.release.resources.paper, null, 'paper resource URL must be null');
-  assert.equal(config.release.resources.arxiv, null, 'arXiv resource URL must be null');
+  assert.equal(
+    config.release.resources.arxiv,
+    'https://arxiv.org/pdf/2608.03387',
+    'arXiv resource URL must point to the published PDF',
+  );
   assert.equal(config.release.resources.code, null, 'code resource URL must be null');
   assert.equal(config.release.resources.dataset, null, 'dataset resource URL must be null');
   assert.equal(

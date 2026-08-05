@@ -620,11 +620,23 @@ function validateConfig(config) {
     if (!release.resources || typeof release.resources !== 'object') {
       addError('config.release.resources must be an object');
     } else {
-      for (const resource of ['paper', 'arxiv', 'code', 'dataset', 'supplementary']) {
+      const expectedResources = {
+        paper: null,
+        arxiv: 'https://arxiv.org/pdf/2608.03387',
+        code: null,
+        dataset: null,
+        supplementary: null,
+      };
+
+      for (const [resource, expectedValue] of Object.entries(expectedResources)) {
         if (release.resources[resource] !== null && !isValidHttpsUrl(release.resources[resource])) {
           addError(`config.release.resources.${resource} must be an HTTPS URL when present`);
         }
-        requireExact(release.resources[resource], null, `config.release.resources.${resource}`);
+        requireExact(
+          release.resources[resource],
+          expectedValue,
+          `config.release.resources.${resource}`,
+        );
       }
     }
   }
