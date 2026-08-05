@@ -17,6 +17,42 @@ const expectedHeroSubtitle =
   'Agentic Skill Distillation from Generated Egocentric Videos for Generalizable Whole-Body Manipulation';
 const expectedTitle = `RoboReact: ${expectedHeroSubtitle}`;
 
+const expectedAuthors = [
+  { name: 'Shuliang He', affiliations: [1, 2] },
+  { name: 'Shuai Wang', affiliations: [2] },
+  { name: 'Bo Yue', affiliations: [1] },
+  { name: 'Junchi Teng', affiliations: [2, 3] },
+  { name: 'Changyu Wang', affiliations: [2] },
+  { name: 'Guiliang Liu', affiliations: [1], corresponding: true },
+];
+
+const expectedAffiliations = [
+  {
+    id: 1,
+    name: 'The Chinese University of Hong Kong, Shenzhen',
+    logo: './assets/images/affiliations/cuhk-shenzhen.png',
+    logoAlt: 'The Chinese University of Hong Kong, Shenzhen emblem',
+    logoWidth: 145,
+    logoHeight: 145,
+  },
+  {
+    id: 2,
+    name: 'JD Technology',
+    logo: './assets/images/affiliations/jd-technology.svg',
+    logoAlt: 'JD Technology logo',
+    logoWidth: 313,
+    logoHeight: 134,
+  },
+  {
+    id: 3,
+    name: 'Tsinghua University',
+    logo: './assets/images/affiliations/tsinghua-university.jpg',
+    logoAlt: 'Tsinghua University emblem',
+    logoWidth: 260,
+    logoHeight: 260,
+  },
+];
+
 const expectedHeroFilmstripAssets = [
   {
     modifier: 'cup-tray',
@@ -493,14 +529,19 @@ test('only highlight-pour-water autoplays and speed labels match the paper site 
   }
 });
 
-test('release metadata remains hidden until public artifacts are ready', () => {
+test('release metadata publishes the author list and local affiliation logos without email', () => {
   const config = loadConfig();
 
   assert.ok(config.release, 'config.release must exist with explicit null metadata fields');
-  assert.ok(Array.isArray(config.release.authors), 'release authors must be an array');
-  assert.equal(config.release.authors.length, 0, 'release authors must stay hidden');
-  assert.ok(Array.isArray(config.release.affiliations), 'release affiliations must be an array');
-  assert.equal(config.release.affiliations.length, 0, 'release affiliations must stay hidden');
+  assert.deepEqual(config.release.authors, expectedAuthors);
+  assert.deepEqual(config.release.affiliations, expectedAffiliations);
+  assert.doesNotMatch(JSON.stringify(config.release.authors), /@/);
+  assert.doesNotMatch(JSON.stringify(config.release.affiliations), /@/);
+
+  for (const affiliation of config.release.affiliations) {
+    assertLocalDocsFile(affiliation.logo, `${affiliation.name} logo`);
+  }
+
   assert.equal(config.release.venue, null, 'release venue must be null');
   assert.equal(config.release.contact, null, 'release contact must be null');
   assert.equal(config.release.bibtex, null, 'release BibTeX must be null');
@@ -513,6 +554,22 @@ test('release metadata remains hidden until public artifacts are ready', () => {
     config.release.resources.supplementary,
     null,
     'supplementary resource URL must be null',
+  );
+});
+
+test('featured result is an independent section immediately before Teaser', () => {
+  const { html } = readRequiredFiles();
+  const featuredIndex = html.indexOf('id="featured"');
+  const teaserIndex = html.indexOf('id="teaser"');
+  const videosIndex = html.indexOf('id="videos"');
+
+  assert.ok(featuredIndex >= 0, 'HTML must include #featured');
+  assert.ok(teaserIndex > featuredIndex, '#featured must appear before #teaser');
+  assert.ok(videosIndex > teaserIndex, '#videos must remain after #teaser');
+  assert.equal(
+    (html.match(/data-video-category="featured"/g) ?? []).length,
+    1,
+    'featured video mount must appear exactly once',
   );
 });
 

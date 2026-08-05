@@ -20,8 +20,27 @@
     return typeof value === 'string' ? value.trim() : '';
   }
 
-  function listValue(value) {
-    return Array.isArray(value) ? value.map(textValue).filter(Boolean) : [];
+  function positiveIntegerList(value) {
+    if (!Array.isArray(value)) {
+      return [];
+    }
+
+    return Array.from(
+      new Set(value.filter((entry) => Number.isInteger(entry) && entry > 0)),
+    );
+  }
+
+  function safeLocalAffiliationLogo(value) {
+    const candidate = textValue(value);
+
+    if (
+      !/^\.\/assets\/images\/affiliations\/[a-z0-9._/-]+$/i.test(candidate) ||
+      candidate.split('/').includes('..')
+    ) {
+      return null;
+    }
+
+    return candidate;
   }
 
   function safeHttpsUrl(value) {
@@ -50,15 +69,132 @@
     return Boolean(text);
   }
 
+  function renderAuthors(mount, value) {
+    if (!mount) {
+      return { count: 0, hasCorresponding: false };
+    }
+
+    mount.replaceChildren();
+    const authors = Array.isArray(value)
+      ? value.filter(
+          (author) =>
+            author && typeof author === 'object' && Boolean(textValue(author.name)),
+        )
+      : [];
+    let hasCorresponding = false;
+
+    authors.forEach(function (author, index) {
+      const item = document.createElement('span');
+      const name = document.createElement('span');
+      const markers = document.createElement('sup');
+      const affiliationIds = positiveIntegerList(author.affiliations);
+      const corresponding = author.corresponding === true;
+
+      item.className = 'research-team__author';
+      name.textContent = textValue(author.name);
+      markers.className = 'research-team__author-markers';
+      markers.textContent = `${affiliationIds.join(',')}${corresponding ? '*' : ''}`;
+      markers.setAttribute(
+        'aria-label',
+        [
+          affiliationIds.length > 0 ? `Affiliations ${affiliationIds.join(' and ')}` : '',
+          corresponding ? 'corresponding author' : '',
+        ]
+          .filter(Boolean)
+          .join(', '),
+      );
+
+      item.append(name);
+      if (markers.textContent) {
+        item.append(markers);
+      }
+      mount.append(item);
+
+      if (index < authors.length - 1) {
+        mount.append(document.createTextNode(', '));
+      }
+
+      hasCorresponding ||= corresponding;
+    });
+
+    mount.hidden = authors.length === 0;
+    return { count: authors.length, hasCorresponding };
+  }
+
+  function renderAffiliations(mount, value) {
+    if (!mount) {
+      return 0;
+    }
+
+    mount.replaceChildren();
+    const affiliations = Array.isArray(value) ? value : [];
+    const seenIds = new Set();
+    let count = 0;
+
+    for (const affiliation of affiliations) {
+      if (!affiliation || typeof affiliation !== 'object') {
+        continue;
+      }
+
+      const id = affiliation.id;
+      const name = textValue(affiliation.name);
+      const logo = safeLocalAffiliationLogo(affiliation.logo);
+
+      if (!Number.isInteger(id) || id < 1 || seenIds.has(id) || !name || !logo) {
+        continue;
+      }
+
+      const item = document.createElement('li');
+      const marker = document.createElement('sup');
+      const image = document.createElement('img');
+      const label = document.createElement('span');
+
+      item.className = 'research-team__affiliation';
+      item.dataset.affiliationId = String(id);
+      marker.className = 'research-team__affiliation-marker';
+      marker.textContent = String(id);
+      image.className = 'research-team__logo';
+      image.src = logo;
+      image.alt = textValue(affiliation.logoAlt) || `${name} logo`;
+      image.decoding = 'async';
+      if (Number.isInteger(affiliation.logoWidth) && affiliation.logoWidth > 0) {
+        image.width = affiliation.logoWidth;
+      }
+      if (Number.isInteger(affiliation.logoHeight) && affiliation.logoHeight > 0) {
+        image.height = affiliation.logoHeight;
+      }
+      label.className = 'research-team__affiliation-name';
+      label.textContent = name;
+
+      item.append(marker, image, label);
+      mount.append(item);
+      seenIds.add(id);
+      count += 1;
+    }
+
+    mount.hidden = count === 0;
+    return count;
+  }
+
   function renderReleaseMetadata() {
     const release = config.release && typeof config.release === 'object' ? config.release : {};
     const metadata = document.querySelector('[data-release-metadata]');
-    const authors = listValue(release.authors);
-    const affiliations = listValue(release.affiliations);
+    const authorResult = renderAuthors(
+      document.querySelector('[data-release-authors]'),
+      release.authors,
+    );
+    const affiliationCount = renderAffiliations(
+      document.querySelector('[data-release-affiliations]'),
+      release.affiliations,
+    );
 
     const visibleFields = [
-      setOptionalText(document.querySelector('[data-release-authors]'), authors.join(', ')),
-      setOptionalText(document.querySelector('[data-release-affiliations]'), affiliations.join(' · ')),
+      authorResult.count > 0,
+      affiliationCount > 0,
+      setOptionalText(
+        document.querySelector('[data-release-corresponding]'),
+        authorResult.hasCorresponding ? '* Corresponding author' : '',
+      ),
       setOptionalText(document.querySelector('[data-release-venue]'), textValue(release.venue)),
       setOptionalText(document.querySelector('[data-release-contact]'), textValue(release.contact)),
     ];
@@ -186,7 +322,7 @@
     const video = document.createElement('video');
     const body = document.createElement('figcaption');
     const heading = document.createElement('div');
-    const title = document.createElement('h4');
+    const title = document.createElement(isFeatured ? 'h3' : 'h4');
     const caption = document.createElement('p');
     const status = document.createElement('p');
 

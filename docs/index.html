@@ -99,6 +99,26 @@
                 <span class="hero__title-subtitle">Agentic Skill Distillation from Generated Egocentric Videos for Generalizable Whole-Body Manipulation</span>
               </h1>
             </div>
+
+            <div
+              class="release-metadata research-team"
+              id="release-metadata"
+              data-release-metadata
+              aria-label="Authors and affiliations"
+              aria-live="polite"
+              hidden
+            >
+              <p class="research-team__authors" id="release-authors" data-release-authors></p>
+              <ol
+                class="research-team__affiliations"
+                id="release-affiliations"
+                data-release-affiliations
+              ></ol>
+              <p class="research-team__corresponding" data-release-corresponding hidden></p>
+              <p id="release-venue" data-release-venue></p>
+              <p id="release-contact" data-release-contact></p>
+            </div>
+
             <div class="hero__summary">
               <p>
                 RoboReact turns a single egocentric RGB-D observation and a language instruction
@@ -110,19 +130,6 @@
                 for online re-grounding and execution without VLM access in the test-time control
                 loop.
               </p>
-            </div>
-
-            <div
-              class="release-metadata"
-              id="release-metadata"
-              data-release-metadata
-              aria-live="polite"
-              hidden
-            >
-              <p id="release-authors" data-release-authors></p>
-              <p id="release-affiliations" data-release-affiliations></p>
-              <p id="release-venue" data-release-venue></p>
-              <p id="release-contact" data-release-contact></p>
             </div>
             <nav
               class="resource-links"
@@ -160,6 +167,25 @@
         </header>
 
         <main id="main-content" tabindex="-1">
+          <section
+            class="section section--media featured-result"
+            id="featured"
+            aria-labelledby="featured-heading"
+          >
+            <div class="content-frame content-frame--wide">
+              <div class="featured-result__heading">
+                <p class="card-kicker">Featured result</p>
+                <h2 id="featured-heading">Pour Water highlight</h2>
+              </div>
+              <div
+                class="featured-video"
+                id="featured-video"
+                data-video-category="featured"
+                aria-live="polite"
+              ></div>
+            </div>
+          </section>
+
           <section class="section section--media" id="teaser" aria-labelledby="teaser-heading">
             <div class="content-frame content-frame--wide">
               <div class="section-heading">
@@ -344,19 +370,6 @@
                 supplied media. They are labels only; playback remains under the browser's native
                 media controls.
               </p>
-
-              <section class="video-group video-group--featured" aria-labelledby="featured-heading">
-                <div class="video-group__heading">
-                  <p class="card-kicker">Featured result</p>
-                  <h3 id="featured-heading">Pour Water highlight</h3>
-                </div>
-                <div
-                  class="featured-video"
-                  id="featured-video"
-                  data-video-category="featured"
-                  aria-live="polite"
-                ></div>
-              </section>
 
               <section class="video-group" aria-labelledby="main-videos-heading">
                 <div class="video-group__heading">

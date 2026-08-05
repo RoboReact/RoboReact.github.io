@@ -9,7 +9,7 @@ Static project page for RoboReact, intended for GitHub Pages publication from th
 - `docs/assets/css/styles.css` holds the site styling.
 - `docs/assets/js/config.js` stores the rendered content, results, and release metadata.
 - `docs/assets/js/main.js` handles page behavior.
-- `docs/assets/images/` contains the teaser image, pipeline figure, and poster frames.
+- `docs/assets/images/` contains the teaser image, pipeline figure, affiliation logos, and poster frames.
 - `docs/assets/images/hero/` contains four derived decorative filmstrip WebPs, separate from the two paper figures and video posters.
 - `docs/assets/videos/` contains the public MP4 assets referenced by the page.
 
@@ -57,9 +57,11 @@ Use the same versions and builds for the closest reproducibility. Exact bytes ma
 
 ## Release Metadata
 
-Release metadata lives only in `docs/assets/js/config.js`. The current empty/null release block keeps authors, affiliations, venue, contact, resources, and BibTeX hidden until real release data is ready. When you populate those fields, update the explicit null-release assertions in `tests/site.test.mjs` and `scripts/validate-site.mjs`.
+Release metadata lives in `docs/assets/js/config.js`. Authors and their numbered affiliations are populated there and rendered beneath the paper title. The three affiliation logos are local files under `docs/assets/images/affiliations/`; contact remains `null`, so the public page does not render email addresses. Venue, resources, and BibTeX stay hidden until those fields are populated.
 
 Future resource URLs must be HTTPS. The page script and validator reject non-HTTPS release resource URLs.
+
+The affiliation marks were sourced from the official CUHK-Shenzhen, JD Technology, and Tsinghua University websites. The JD asset keeps only the official red `JDT` symbol, without the Chinese wordmark. The Tsinghua emblem bitmap is cropped and resized from the official visual-identity image so it fits the affiliation card without changing the mark itself.
 
 ## GitHub Pages
 

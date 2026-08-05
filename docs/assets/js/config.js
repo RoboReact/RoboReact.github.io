@@ -11,8 +11,73 @@ globalThis.ROBOREACT_CONFIG = JSON.parse(String.raw`
     "squat": "Squat and manipulation"
   },
   "release": {
-    "authors": [],
-    "affiliations": [],
+    "authors": [
+      {
+        "name": "Shuliang He",
+        "affiliations": [
+          1,
+          2
+        ]
+      },
+      {
+        "name": "Shuai Wang",
+        "affiliations": [
+          2
+        ]
+      },
+      {
+        "name": "Bo Yue",
+        "affiliations": [
+          1
+        ]
+      },
+      {
+        "name": "Junchi Teng",
+        "affiliations": [
+          2,
+          3
+        ]
+      },
+      {
+        "name": "Changyu Wang",
+        "affiliations": [
+          2
+        ]
+      },
+      {
+        "name": "Guiliang Liu",
+        "affiliations": [
+          1
+        ],
+        "corresponding": true
+      }
+    ],
+    "affiliations": [
+      {
+        "id": 1,
+        "name": "The Chinese University of Hong Kong, Shenzhen",
+        "logo": "./assets/images/affiliations/cuhk-shenzhen.png",
+        "logoAlt": "The Chinese University of Hong Kong, Shenzhen emblem",
+        "logoWidth": 145,
+        "logoHeight": 145
+      },
+      {
+        "id": 2,
+        "name": "JD Technology",
+        "logo": "./assets/images/affiliations/jd-technology.svg",
+        "logoAlt": "JD Technology logo",
+        "logoWidth": 313,
+        "logoHeight": 134
+      },
+      {
+        "id": 3,
+        "name": "Tsinghua University",
+        "logo": "./assets/images/affiliations/tsinghua-university.jpg",
+        "logoAlt": "Tsinghua University emblem",
+        "logoWidth": 260,
+        "logoHeight": 260
+      }
+    ],
     "venue": null,
     "contact": null,
     "bibtex": null,

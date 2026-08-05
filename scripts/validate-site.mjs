@@ -15,6 +15,45 @@ const ffprobeFileTimeoutMs = 30_000;
 const expectedTitle =
   'RoboReact: Agentic Skill Distillation from Generated Egocentric Videos for Generalizable Whole-Body Manipulation';
 
+const expectedReleaseAuthors = [
+  { name: 'Shuliang He', affiliations: [1, 2] },
+  { name: 'Shuai Wang', affiliations: [2] },
+  { name: 'Bo Yue', affiliations: [1] },
+  { name: 'Junchi Teng', affiliations: [2, 3] },
+  { name: 'Changyu Wang', affiliations: [2] },
+  { name: 'Guiliang Liu', affiliations: [1], corresponding: true },
+];
+
+const expectedReleaseAffiliations = [
+  {
+    id: 1,
+    name: 'The Chinese University of Hong Kong, Shenzhen',
+    logo: './assets/images/affiliations/cuhk-shenzhen.png',
+    logoAlt: 'The Chinese University of Hong Kong, Shenzhen emblem',
+    logoWidth: 145,
+    logoHeight: 145,
+  },
+  {
+    id: 2,
+    name: 'JD Technology',
+    logo: './assets/images/affiliations/jd-technology.svg',
+    logoAlt: 'JD Technology logo',
+    logoWidth: 313,
+    logoHeight: 134,
+  },
+  {
+    id: 3,
+    name: 'Tsinghua University',
+    logo: './assets/images/affiliations/tsinghua-university.jpg',
+    logoAlt: 'Tsinghua University emblem',
+    logoWidth: 260,
+    logoHeight: 260,
+  },
+];
+const expectedAffiliationLogoPaths = expectedReleaseAffiliations.map(
+  (affiliation) => `docs/${affiliation.logo.replace(/^\.\//, '')}`,
+);
+
 const expectedVideos = [
   ['highlight-pour-water', 'featured'],
   ['main-hand-over', 'main'],
@@ -60,6 +99,9 @@ const requiredFiles = [
   'docs/assets/js/main.js',
   'docs/assets/images/teaser.webp',
   'docs/assets/images/pipeline.webp',
+  'docs/assets/images/affiliations/cuhk-shenzhen.png',
+  'docs/assets/images/affiliations/jd-technology.svg',
+  'docs/assets/images/affiliations/tsinghua-university.jpg',
   ...expectedHeroStrips.keys(),
 ];
 
@@ -521,12 +563,6 @@ function requireExactStructure(value, expected, label) {
   requireExact(value, expected, label);
 }
 
-function requireEmptyArray(value, label) {
-  if (!Array.isArray(value) || value.length !== 0) {
-    addError(`${label} must be an empty array`);
-  }
-}
-
 function requireNonemptyString(value, label) {
   if (typeof value !== 'string' || value.trim() === '') {
     addError(`${label} must be a nonempty string`);
@@ -568,8 +604,15 @@ function validateConfig(config) {
   if (!release || typeof release !== 'object' || Array.isArray(release)) {
     addError('config.release must be an object');
   } else {
-    requireEmptyArray(release.authors, 'config.release.authors');
-    requireEmptyArray(release.affiliations, 'config.release.affiliations');
+    requireExactStructure(release.authors, expectedReleaseAuthors, 'config.release.authors');
+    requireExactStructure(
+      release.affiliations,
+      expectedReleaseAffiliations,
+      'config.release.affiliations',
+    );
+    for (const [index, affiliation] of expectedReleaseAffiliations.entries()) {
+      resolveConfigAsset(affiliation.logo, `config.release.affiliations[${index}].logo`);
+    }
     requireExact(release.venue, null, 'config.release.venue');
     requireExact(release.contact, null, 'config.release.contact');
     requireExact(release.bibtex, null, 'config.release.bibtex');
@@ -794,6 +837,9 @@ function validateMediaTree(files) {
   const allHeroDirectoryFiles = files.filter((relativePath) =>
     relativePath.startsWith('docs/assets/images/hero/'),
   );
+  const allAffiliationDirectoryFiles = files.filter((relativePath) =>
+    relativePath.startsWith('docs/assets/images/affiliations/'),
+  );
   const allImageFiles = files.filter((relativePath) =>
     relativePath.startsWith('docs/assets/images/'),
   );
@@ -850,13 +896,29 @@ function validateMediaTree(files) {
     'hero directory contents',
   );
   comparePathSets(
+    allAffiliationDirectoryFiles,
+    expectedAffiliationLogoPaths,
+    'affiliation logo directory contents',
+  );
+  comparePathSets(
     allImageFiles,
-    [...expectedPosterPaths, ...expectedFigurePaths, ...expectedHeroPaths],
+    [
+      ...expectedPosterPaths,
+      ...expectedFigurePaths,
+      ...expectedHeroPaths,
+      ...expectedAffiliationLogoPaths,
+    ],
     'image directory contents',
   );
 
   let heroStripBytes = 0;
-  for (const relativePath of [...videoFiles, ...posterFiles, ...figureFiles, ...heroStripFiles]) {
+  for (const relativePath of [
+    ...videoFiles,
+    ...posterFiles,
+    ...figureFiles,
+    ...heroStripFiles,
+    ...expectedAffiliationLogoPaths,
+  ]) {
     isRegularNonemptyFile(fromRepository(relativePath), relativePath);
   }
   for (const relativePath of heroStripFiles) {
@@ -1081,12 +1143,23 @@ function validateHtmlStructure(html) {
     'HTML hero filmstrip sheet count',
   );
 
-  for (const id of ['teaser', 'overview', 'method', 'videos', 'results']) {
+  for (const id of ['featured', 'teaser', 'overview', 'method', 'videos', 'results']) {
     const section = openingTags(html, 'section').find((tag) => getAttribute(tag, 'id') === id);
     if (!section) {
       addError(`HTML must include semantic section #${id}`);
     }
   }
+
+  const featuredIndex = html.indexOf('id="featured"');
+  const teaserIndex = html.indexOf('id="teaser"');
+  if (featuredIndex < 0 || teaserIndex < 0 || featuredIndex >= teaserIndex) {
+    addError('HTML section #featured must appear before #teaser');
+  }
+  requireExact(
+    (html.match(/data-video-category=["']featured["']/g) ?? []).length,
+    1,
+    'HTML featured video mount count',
+  );
 
   const images = openingTags(html, 'img');
   requireExact(images.length, 2, 'HTML image count');
