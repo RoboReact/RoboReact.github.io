@@ -11,3 +11,4 @@
 # Keep generated planning material and macOS metadata out of the release tree.
 /docs/superpowers/
 .DS_Store
+.omx/
