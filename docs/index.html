@@ -21,8 +21,10 @@
     <title>RoboReact: Agentic Skill Distillation from Generated Egocentric Videos for Generalizable Whole-Body Manipulation</title>
     <link rel="icon" href="./favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="./assets/css/styles.css">
+    <link rel="stylesheet" href="./assets/css/results.css">
     <script src="./assets/js/config.js" defer></script>
     <script src="./assets/js/main.js" defer></script>
+    <script src="./assets/js/results.js" defer></script>
   </head>
   <body>
     <a class="skip-link" href="#main-content">Skip to main content</a>
@@ -92,12 +94,34 @@
             </div>
           </div>
           <div class="content-frame content-frame--wide">
-            <p class="eyebrow">Generated-video skill distillation</p>
             <div class="hero__heading">
               <h1 class="hero__title">
                 <span class="hero__title-brand">RoboReact</span><span class="sr-only">:</span>
                 <span class="hero__title-subtitle">Agentic Skill Distillation from Generated Egocentric Videos for Generalizable Whole-Body Manipulation</span>
               </h1>
+            </div>
+
+            <div class="hero__summary">
+              <p>
+                RoboReact turns a single egocentric RGB-D observation and a language instruction
+                into a reusable whole-body manipulation skill, using a generated human interaction
+                video as its procedural prior.
+              </p>
+              <p>
+                It compiles and calibrates object-centric keyframes offline, then freezes the skill
+                for online re-grounding and execution without VLM access in the test-time control
+                loop.
+              </p>
+            </div>
+            <div class="hero-actions">
+              <nav
+                class="resource-links"
+                id="resource-links"
+                data-resource-links
+                aria-label="Project resources"
+                hidden
+              ></nav>
+              <a class="hero-demo" href="#featured">Watch demo <span aria-hidden="true">↓</span></a>
             </div>
 
             <div
@@ -118,26 +142,6 @@
               <p id="release-venue" data-release-venue></p>
               <p id="release-contact" data-release-contact></p>
             </div>
-
-            <div class="hero__summary">
-              <p>
-                RoboReact turns a single egocentric RGB-D observation and a language instruction
-                into a reusable whole-body manipulation skill, using a generated human interaction
-                video as its procedural prior.
-              </p>
-              <p>
-                It compiles and calibrates object-centric keyframes offline, then freezes the skill
-                for online re-grounding and execution without VLM access in the test-time control
-                loop.
-              </p>
-            </div>
-            <nav
-              class="resource-links"
-              id="resource-links"
-              data-resource-links
-              aria-label="Project resources"
-              hidden
-            ></nav>
 
             <ul class="fact-tags" aria-label="Method characteristics">
               <li>Single RGB-D source</li>
@@ -371,12 +375,7 @@
                 media controls.
               </p>
 
-              <section class="video-group" aria-labelledby="main-videos-heading">
-                <div class="video-group__heading">
-                  <p class="card-kicker">Canonical evaluation</p>
-                  <h3 id="main-videos-heading">Four main tasks</h3>
-                  <p>Hand Over, Open Box, Pour Water, and Open Drawer.</p>
-                </div>
+              <section class="video-group video-group--main" aria-label="Main task recordings">
                 <div class="video-grid" data-video-category="main"></div>
               </section>
 

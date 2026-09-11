@@ -25,11 +25,12 @@ SOURCE_ROOT_INPUT="${1:-$REPO_ROOT}"
 SOURCE_ROOT="$(cd "$SOURCE_ROOT_INPUT" && pwd)"
 
 # Tool resolution is intentionally explicit so a missing prerequisite names the
-# executable to install: ffmpeg, ffprobe, gs (Ghostscript), or cwebp (libwebp).
+# executable to install: ffmpeg, ffprobe, gs (Ghostscript), cwebp (libwebp), or node.
 FFMPEG="$(require_tool ffmpeg)"
 FFPROBE="$(require_tool ffprobe)"
 GS="$(require_tool gs)"
 CWEBP="$(require_tool cwebp)"
+NODE="$(require_tool node)"
 
 VIDEO_DIR="$REPO_ROOT/docs/assets/videos"
 POSTER_DIR="$REPO_ROOT/docs/assets/images/posters"
@@ -73,29 +74,9 @@ SLUGS=(
   'squat-pour-water-02'
 )
 
-POSTER_TIMES=(
-  '18.32'
-  '3.50'
-  '4.68'
-  '4.37'
-  '4.96'
-  '3.33'
-  '3.38'
-  '3.55'
-  '4.00'
-  '3.48'
-  '7.95'
-  '3.33'
-  '3.02'
-  '3.12'
-  '4.37'
-  '2.87'
-)
-
 EXPECTED_VIDEO_COUNT=16
 [[ "${#SOURCE_FILES[@]}" -eq "$EXPECTED_VIDEO_COUNT" ]] || die 'internal source mapping count is not 16'
 [[ "${#SLUGS[@]}" -eq "$EXPECTED_VIDEO_COUNT" ]] || die 'internal slug mapping count is not 16'
-[[ "${#POSTER_TIMES[@]}" -eq "$EXPECTED_VIDEO_COUNT" ]] || die 'internal poster timestamp count is not 16'
 
 PDF_SOURCE="$SOURCE_ROOT/RoboReact_Agentic_Skill_.pdf"
 [[ -f "$PDF_SOURCE" ]] || die "required input is missing: $PDF_SOURCE"
@@ -120,10 +101,7 @@ printf 'Preparing %d videos from %s\n' "$EXPECTED_VIDEO_COUNT" "$SOURCE_ROOT"
 for ((index = 0; index < EXPECTED_VIDEO_COUNT; index += 1)); do
   source_path="$SOURCE_ROOT/${SOURCE_FILES[$index]}"
   slug="${SLUGS[$index]}"
-  poster_time="${POSTER_TIMES[$index]}"
   video_output="$VIDEO_DIR/$slug.mp4"
-  poster_frame="$TEMP_DIR/$slug.png"
-  poster_output="$POSTER_DIR/$slug.webp"
 
   printf '  [%02d/%02d] %s\n' "$((index + 1))" "$EXPECTED_VIDEO_COUNT" "$slug"
 
@@ -134,14 +112,9 @@ for ((index = 0; index < EXPECTED_VIDEO_COUNT; index += 1)); do
     -c:v libx264 -profile:v high -preset medium -crf 22 \
     -pix_fmt yuv420p -movflags +faststart \
     "$video_output"
-
-  "$FFMPEG" -nostdin -hide_banner -loglevel error -y \
-    -i "$source_path" -ss "$poster_time" \
-    -map 0:v:0 -frames:v 1 -an -sn -dn \
-    "$poster_frame"
-
-  "$CWEBP" -quiet -q 84 -m 6 "$poster_frame" -o "$poster_output"
 done
+
+FFMPEG="$FFMPEG" "$NODE" "$SCRIPT_DIR/prepare-posters.mjs"
 
 printf 'Rendering and cropping paper figures\n'
 

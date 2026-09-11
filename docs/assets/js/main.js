@@ -221,7 +221,10 @@
         link.href = href;
         link.target = '_blank';
         link.rel = 'noopener noreferrer';
-        link.textContent = label;
+        link.textContent = key === 'arxiv' && !safeHttpsUrl(resources.paper) ? 'Read paper' : label;
+        if (key === 'paper' || (key === 'arxiv' && !safeHttpsUrl(resources.paper))) {
+          link.className = 'resource-link--primary';
+        }
         resourceMount.append(link);
       }
 
@@ -315,7 +318,7 @@
     status.hidden = true;
   }
 
-  function createVideoCard(entry, isFeatured, reduceMotion) {
+  function createVideoCard(entry, isFeatured, reduceMotion, viewer) {
     const card = document.createElement('figure');
     const media = document.createElement('div');
     const badge = document.createElement('span');
@@ -379,6 +382,19 @@
 
     heading.append(title);
     body.append(heading, caption, status);
+    if (viewer) {
+      const expand = document.createElement('button');
+      expand.type = 'button';
+      expand.className = 'media-expand';
+      expand.textContent = 'Expand video ↗';
+      expand.setAttribute('aria-label', `Expand video: ${textValue(entry.title)}`);
+      expand.setAttribute('aria-haspopup', 'dialog');
+      expand.addEventListener('click', function () {
+        attachVideoSource(video);
+        viewer.openVideo(video, entry, expand);
+      });
+      body.append(expand);
+    }
     media.append(badge, video);
     card.append(media, body);
     return { card, video };
@@ -396,7 +412,7 @@
     video.load();
   }
 
-  function renderVideos(reduceMotion) {
+  function renderVideos(reduceMotion, viewer) {
     const mounts = new Map();
 
     for (const mount of document.querySelectorAll('[data-video-category]')) {
@@ -421,7 +437,9 @@
       }
 
       const isFeatured = category === 'featured';
-      const rendered = createVideoCard(entry, isFeatured, reduceMotion);
+      const rendered = createVideoCard(entry, isFeatured, reduceMotion, viewer);
+      rendered.card.dataset.task = ['hand-over', 'open-box', 'pour-water', 'open-drawer']
+        .find((task) => textValue(entry.id).includes(task)) || '';
       mount.append(rendered.card);
 
       if (isFeatured) {
@@ -471,6 +489,303 @@
       } else if (typeof reduceMotion.addListener === 'function') {
         reduceMotion.addListener(pauseForReducedMotion);
       }
+    }
+  }
+
+  function setupGalleryFilters() {
+    const gallery = document.querySelector('#videos');
+    const groups = Array.from(gallery?.querySelectorAll('.video-group') || []);
+    if (groups.length === 0) return;
+    const total = groups.reduce((sum, group) => sum + group.querySelectorAll('.video-card').length, 0);
+
+    const form = document.createElement('form');
+    form.className = 'gallery-filters';
+    form.setAttribute('aria-label', 'Filter demonstration videos');
+    form.addEventListener('submit', (event) => event.preventDefault());
+    const selected = { task: 'all', condition: 'all' };
+    const dimensions = [
+      ['task', 'Task', [
+        ['all', 'All tasks'], ['hand-over', 'Hand Over'], ['open-box', 'Open Box'],
+        ['pour-water', 'Pour Water'], ['open-drawer', 'Open Drawer'],
+      ]],
+      ['condition', 'Condition', [
+        ['all', 'All conditions'], ['main', 'Main tasks'], ['crossObject', 'Cross-object'],
+        ['variedPose', 'Varied pose'], ['squat', 'Squat & manipulation'],
+      ]],
+    ];
+    const results = document.createElement('div');
+    results.className = 'gallery-results';
+    const count = document.createElement('p');
+    count.className = 'gallery-count';
+    count.setAttribute('role', 'status');
+    count.setAttribute('aria-live', 'polite');
+    count.setAttribute('aria-atomic', 'true');
+    const reset = document.createElement('button');
+    reset.type = 'button';
+    reset.className = 'gallery-reset';
+    reset.textContent = 'Reset filters';
+    const empty = document.createElement('p');
+    empty.className = 'gallery-empty';
+    empty.textContent = 'No recordings match these filters. Try another task or reset the filters.';
+
+    function update() {
+      let visible = 0;
+      for (const group of groups) {
+        const category = group.querySelector('[data-video-category]').dataset.videoCategory;
+        let groupCount = 0;
+        for (const card of group.querySelectorAll('.video-card')) {
+          const matches = (selected.task === 'all' || card.dataset.task === selected.task)
+            && (selected.condition === 'all' || category === selected.condition);
+          card.hidden = !matches;
+          if (matches) groupCount += 1;
+          else card.querySelector('video')?.pause();
+        }
+        group.hidden = groupCount === 0;
+        visible += groupCount;
+      }
+      for (const fieldset of form.querySelectorAll('[data-filter]')) {
+        for (const button of fieldset.querySelectorAll('button')) {
+          button.setAttribute('aria-pressed', String(button.dataset.value === selected[fieldset.dataset.filter]));
+        }
+      }
+      count.textContent = `${visible} of ${total} recordings`;
+      empty.hidden = visible > 0;
+      reset.disabled = selected.task === 'all' && selected.condition === 'all';
+    }
+
+    for (const [key, label, choices] of dimensions) {
+      const fieldset = document.createElement('fieldset');
+      fieldset.className = 'gallery-filter';
+      fieldset.dataset.filter = key;
+      const legend = document.createElement('legend');
+      legend.textContent = label;
+      const options = document.createElement('div');
+      options.className = 'gallery-filter__options';
+      for (const [value, text] of choices) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'filter-chip';
+        button.dataset.value = value;
+        button.textContent = text;
+        button.addEventListener('click', function () {
+          selected[key] = value;
+          update();
+        });
+        options.append(button);
+      }
+      fieldset.append(legend, options);
+      form.append(fieldset);
+    }
+    reset.addEventListener('click', function () {
+      selected.task = 'all';
+      selected.condition = 'all';
+      update();
+      form.querySelector('button').focus({ preventScroll: true });
+    });
+    results.append(count, reset);
+    form.append(results);
+    groups[0].before(form, empty);
+    update();
+  }
+
+  function createMediaViewer() {
+    const dialog = document.createElement('dialog');
+    if (typeof dialog.showModal !== 'function') return null;
+    dialog.className = 'media-viewer';
+    dialog.setAttribute('aria-labelledby', 'media-viewer-title');
+    const header = document.createElement('div');
+    header.className = 'media-viewer__header';
+    const heading = document.createElement('div');
+    const eyebrow = document.createElement('p');
+    eyebrow.className = 'media-viewer__eyebrow';
+    const title = document.createElement('h2');
+    title.id = 'media-viewer-title';
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'media-viewer__close';
+    close.textContent = 'Close ×';
+    close.setAttribute('aria-label', 'Close media viewer');
+    close.autofocus = true;
+    heading.append(eyebrow, title);
+    header.append(heading, close);
+    const toolbar = document.createElement('div');
+    toolbar.className = 'media-viewer__toolbar';
+    toolbar.setAttribute('role', 'group');
+    toolbar.setAttribute('aria-label', 'Figure zoom');
+    const zoomLabel = document.createElement('span');
+    zoomLabel.className = 'media-viewer__zoom';
+    zoomLabel.setAttribute('aria-live', 'polite');
+    const stage = document.createElement('div');
+    stage.className = 'media-viewer__stage';
+    stage.tabIndex = 0;
+    const caption = document.createElement('p');
+    caption.className = 'media-viewer__caption';
+    const status = document.createElement('p');
+    status.className = 'media-viewer__status';
+    status.setAttribute('role', 'status');
+    const zoomButtons = new Map();
+    let origin = null;
+    let videoState = null;
+    let activeImage = null;
+    let zoom = 1;
+    let scrollPosition = { x: 0, y: 0 };
+
+    function fitImage() {
+      if (!activeImage?.naturalWidth) return;
+      const style = getComputedStyle(stage);
+      // Use the full box so scrollbars from the previous zoom cannot shrink Fit.
+      const width = stage.offsetWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+      const height = stage.offsetHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
+      const fitWidth = Math.min(activeImage.naturalWidth, width,
+        height * activeImage.naturalWidth / activeImage.naturalHeight);
+      activeImage.style.width = `${Math.max(1, fitWidth) * zoom}px`;
+      zoomLabel.textContent = zoom === 1 ? 'Fit' : `${Math.round(zoom * 100)}%`;
+      zoomButtons.get('zoom-out').disabled = zoom <= 1;
+      zoomButtons.get('zoom-in').disabled = zoom >= 4;
+      if (zoom === 1) stage.scrollTo(0, 0);
+    }
+    for (const [action, label] of [['zoom-out', '−'], ['zoom-in', '+'], ['fit', 'Fit to view']]) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.dataset.viewerAction = action;
+      button.textContent = label;
+      if (action !== 'fit') button.setAttribute('aria-label', action === 'zoom-in' ? 'Zoom in' : 'Zoom out');
+      button.addEventListener('click', function () {
+        zoom = action === 'fit' ? 1 : Math.min(4, Math.max(1, zoom + (action === 'zoom-in' ? 0.5 : -0.5)));
+        fitImage();
+      });
+      zoomButtons.set(action, button);
+      toolbar.append(button);
+    }
+    toolbar.append(zoomLabel);
+    dialog.append(header, toolbar, stage, caption, status);
+    document.body.append(dialog);
+
+    function open(kind, trigger, name, description) {
+      origin = trigger;
+      scrollPosition = { x: window.scrollX, y: window.scrollY };
+      for (const video of document.querySelectorAll('video')) video.pause();
+      dialog.dataset.kind = kind;
+      title.textContent = name;
+      caption.textContent = description;
+      eyebrow.textContent = kind === 'image' ? 'Research figure' : 'Experiment recording';
+      toolbar.hidden = kind !== 'image';
+      status.textContent = '';
+      status.hidden = true;
+      stage.setAttribute('aria-label', kind === 'image' ? 'Figure; scroll to explore when zoomed' : 'Video playback');
+      document.body.classList.add('media-viewer-open');
+      dialog.showModal();
+      close.focus({ preventScroll: true });
+    }
+
+    function moveVideo(video, parent, before, position) {
+      parent.insertBefore(video, before);
+      if (position > 0) {
+        const restore = function () { video.currentTime = position; };
+        if (video.readyState >= 1) restore();
+        else video.addEventListener('loadedmetadata', restore, { once: true });
+      }
+    }
+
+    function closeViewer() {
+      dialog.close();
+      restorePage();
+    }
+    close.addEventListener('click', closeViewer);
+    dialog.addEventListener('cancel', function (event) {
+      event.preventDefault();
+      closeViewer();
+    });
+    dialog.addEventListener('click', function (event) {
+      if (event.target !== dialog) return;
+      const rect = dialog.getBoundingClientRect();
+      if (event.clientX < rect.left || event.clientX > rect.right
+        || event.clientY < rect.top || event.clientY > rect.bottom) closeViewer();
+    });
+    function restorePage() {
+      if (!origin) return;
+      if (videoState) {
+        const { video, parent, next } = videoState;
+        video.pause();
+        video.removeEventListener('error', showVideoError);
+        moveVideo(video, parent, next, video.currentTime);
+        videoState = null;
+      }
+      activeImage = null;
+      stage.replaceChildren();
+      document.body.classList.remove('media-viewer-open');
+      window.scrollTo({ left: scrollPosition.x, top: scrollPosition.y, behavior: 'instant' });
+      origin?.focus({ preventScroll: true });
+      origin = null;
+    }
+    dialog.addEventListener('close', function () {
+      // A delayed close event must not clear a viewer that has already reopened.
+      if (!dialog.open) restorePage();
+    });
+    window.addEventListener('resize', function () {
+      if (dialog.open) fitImage();
+    });
+    function showVideoError() {
+      status.hidden = false;
+      status.textContent = 'Video unavailable. You can still view its poster and description.';
+    }
+
+    return {
+      openVideo(video, entry, trigger) {
+        const playing = !video.paused;
+        const position = video.currentTime;
+        videoState = { video, parent: video.parentNode, next: video.nextSibling };
+        video.autoplay = false;
+        open('video', trigger, textValue(entry.title), textValue(entry.caption));
+        moveVideo(video, stage, null, position);
+        video.addEventListener('error', showVideoError);
+        if (video.error) showVideoError();
+        if (playing) video.play().catch(() => {});
+      },
+      openImage(source, description, trigger, name) {
+        zoom = 1;
+        const image = document.createElement('img');
+        image.className = 'media-viewer__image';
+        image.alt = source.alt;
+        activeImage = image;
+        stage.append(image);
+        open('image', trigger, name, description);
+        status.hidden = false;
+        status.textContent = 'Loading figure…';
+        image.addEventListener('load', function () {
+          if (activeImage !== image) return;
+          status.hidden = true;
+          fitImage();
+        });
+        image.addEventListener('error', function () {
+          if (activeImage !== image) return;
+          status.hidden = false;
+          status.textContent = 'Figure unavailable. Close the viewer to return to the page.';
+        });
+        image.src = source.currentSrc || source.src;
+      },
+    };
+  }
+
+  function setupFigureViewers(viewer) {
+    if (!viewer) return;
+    for (const figure of document.querySelectorAll('.paper-figure')) {
+      const image = figure.querySelector('img');
+      if (!image) continue;
+      const title = figure.closest('section').querySelector('h2').textContent;
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'figure-trigger';
+      button.setAttribute('aria-label', `Expand ${title.toLowerCase()} figure`);
+      button.setAttribute('aria-haspopup', 'dialog');
+      const hint = document.createElement('span');
+      hint.className = 'figure-trigger__hint';
+      hint.textContent = 'Expand figure ↗';
+      image.before(button);
+      button.append(image, hint);
+      button.addEventListener('click', function () {
+        viewer.openImage(image, figure.querySelector('figcaption')?.textContent.trim() || '', button, `${title} figure`);
+      });
     }
   }
 
@@ -548,7 +863,10 @@
       : { matches: false };
 
     renderReleaseMetadata();
-    renderVideos(reduceMotion);
+    const viewer = createMediaViewer();
+    renderVideos(reduceMotion, viewer);
+    setupGalleryFilters();
+    setupFigureViewers(viewer);
     setupSectionNavigation();
   }
 

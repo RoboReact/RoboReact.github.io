@@ -23,13 +23,38 @@ python3 -m http.server 8000 --directory docs
 
 Then open `http://localhost:8000/`.
 
+## Exploring the Page
+
+- Use **Read paper** and **Watch demo** in the hero to jump into the research.
+- The video gallery has task and condition filters that work together across its 15 recordings. The featured highlight remains separate. **Reset filters** restores every gallery recording; hidden videos pause.
+- **Expand video** opens a larger player with its caption and current playback position. Closing pauses playback and returns to the original card.
+- Click either research figure to enlarge it, then use **+**, **−**, or **Fit to view**. Scroll inside the viewer to inspect a zoomed figure.
+- In **Results**, switch tasks to compare the configured terminal success rates on a fixed 0–100% scale. **Watch RoboReact recordings** applies that task to the video gallery and clears condition filters; the original comparison table stays below the chart.
+- Close a viewer with its **Close** button, **Esc**, or a click on the backdrop. Keyboard focus and reading position return to the original control.
+
 ## Verification
 
 - `node --test tests/site.test.mjs`
 - `node scripts/validate-site.mjs`
 - `git diff --check`
 
+Run the browser interaction checks with Node.js 22+ and a local Chrome installation:
+
+```bash
+node tests/interactions.test.mjs
+```
+
+These checks start and stop their own local server and isolated headless browser. `CHROME_BIN` selects a Chrome/Chromium executable; `SCREENSHOT_DIR=/tmp/roboreact-screenshots` optionally saves desktop and mobile screenshots. They cover combined filters, empty results, paused hidden videos, viewer playback/focus restoration, figure zoom, chart data and video links, mobile layout, reduced motion, and unavailable media.
+
 ## Media Regeneration
+
+After replacing a public MP4, refresh the video posters with:
+
+```bash
+node scripts/prepare-posters.mjs
+```
+
+This uses the video/poster mappings in `docs/assets/js/config.js` and extracts the first frame of each currently published MP4. It only updates the 16 posters; backup videos that are not configured on the page are ignored. It requires FFmpeg with the libwebp encoder (`FFMPEG` can select its executable), without the private source bundle. The full media script also runs this step, so posters match the start of playback.
 
 Rebuild the public media from a local source directory with:
 
