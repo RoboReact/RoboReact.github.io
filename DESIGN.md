@@ -40,7 +40,7 @@
 - New: two filter button groups, live result count, reset/empty states, expand buttons, one reusable native dialog with image zoom controls.
 - Place the count and reset control beside the two filter rows on desktop, within the same panel; use one compact bottom row on mobile.
 - Keep video expansion a small, quiet text control and start the hero directly with the paper title.
-- Align video expansion to the bottom right; omit the redundant main-task gallery heading.
+- Align video expansion with each video-card title; omit the redundant main-task gallery heading.
 - Method: the original four static explanations and execution-boundary note, with figure enlargement retained.
 - Results: reuse configured taskResults with a fixed 0–100% scale, exact labels, muted baseline bars and an accented RoboReact bar; retain the full original table.
 - Align the selected task/rate label and task selectors in one centered row, wrapping only on narrow screens; omit the extra explanatory sentence.

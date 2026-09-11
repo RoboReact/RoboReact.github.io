@@ -393,7 +393,7 @@
         attachVideoSource(video);
         viewer.openVideo(video, entry, expand);
       });
-      body.append(expand);
+      heading.append(expand);
     }
     media.append(badge, video);
     card.append(media, body);

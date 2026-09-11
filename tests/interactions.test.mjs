@@ -194,6 +194,11 @@ test('gallery combines task/condition filters, pauses hidden videos and resets e
 test('video viewer preserves the source and position, closes with Escape and restores focus', { timeout: 45000 }, async t => {
   const p = await page(t);
   assert.equal(await p.evaluate(`document.querySelectorAll('.media-expand').length`), 16);
+  assert.equal(
+    await p.evaluate(`document.querySelectorAll('.video-card__heading > .media-expand').length`),
+    16,
+    'every video expand control shares the title row',
+  );
   await p.evaluate(`document.querySelector('[data-video-id="main-hand-over"]').scrollIntoView()`);
   await p.waitFor(`document.querySelector('[data-video-id="main-hand-over"] video').readyState >= 2`);
   await p.evaluate(`window.testVideo = document.querySelector('[data-video-id="main-hand-over"] video'); testVideo.currentTime = 1`);
